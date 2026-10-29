@@ -8,6 +8,8 @@ FOREXIQ is an AI-assisted market research and trading workspace for forex and cr
 
 - Responsive FOREXIQ workspace and navigation
 - Forex and crypto watchlist interface
+- Server-side public crypto market feed for BTC, ETH and SOL, refreshed every 15 seconds
+- Exchange provider details kept out of the customer-facing interface
 - Searchable instrument list
 - Illustrative chart and dashboard panels
 - AI research and security-readiness UI states
@@ -15,7 +17,7 @@ FOREXIQ is an AI-assisted market research and trading workspace for forex and cr
 
 ## Not yet connected
 
-Live market data, AI inference, user authentication, database persistence, broker/exchange connectivity, order execution, deposits, withdrawals, subscriptions and production risk controls are not enabled by this initial scaffold. They must be integrated and tested before being advertised as available.
+Live forex quotes, AI inference, user authentication, database persistence, authenticated exchange connectivity, order execution, deposits, withdrawals, subscriptions and production risk controls are not enabled. Public crypto market quotes are fetched server-side; this is market data only and does not enable trading. They must be integrated and tested before being advertised as available.
 
 ## Run locally
 
