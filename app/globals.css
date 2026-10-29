@@ -19,3 +19,5 @@
 .neutral-change{color:#7d8d98;font-size:10px}
 @media(max-width:900px){.market-table{overflow-x:auto}.market-table-head,.market-row-wide{min-width:690px}.market-controls .search-wrap{max-width:none}}
 @media(max-width:700px){.market-count,.feed-refresh{font-size:8px}.market-tabs{overflow-x:auto;flex-wrap:nowrap;padding-bottom:3px}.market-tabs button{white-space:nowrap}.market-table-head,.market-row-wide{min-width:650px}}
+
+.quote-status.delayed{color:#d6ad69}
