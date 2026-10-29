@@ -8,8 +8,10 @@ FOREXIQ is an AI-assisted market research and trading workspace for forex and cr
 
 - Responsive FOREXIQ workspace and navigation
 - Forex and crypto watchlist interface
-- Server-side public crypto market feed for BTC, ETH and SOL, refreshed every 15 seconds
-- Exchange provider details kept out of the customer-facing interface
+- Server-side multi-asset market overview for major FX pairs, gold and silver futures proxies, energy futures, major indices and selected crypto pairs
+- Searchable market watch with asset-class filters and per-instrument live/unavailable states
+- Market quote refresh every 30 seconds; availability and delays depend on the upstream public data feeds
+- Internal market-data provider details are not displayed in the customer-facing interface
 - Searchable instrument list
 - Illustrative chart and dashboard panels
 - AI research and security-readiness UI states
@@ -17,7 +19,7 @@ FOREXIQ is an AI-assisted market research and trading workspace for forex and cr
 
 ## Not yet connected
 
-Live forex quotes, AI inference, user authentication, database persistence, authenticated exchange connectivity, order execution, deposits, withdrawals, subscriptions and production risk controls are not enabled. Public crypto market quotes are fetched server-side; this is market data only and does not enable trading. They must be integrated and tested before being advertised as available.
+AI inference, user authentication, database persistence, broker/exchange account connectivity, order execution, deposits, withdrawals, subscriptions, historical chart streaming, executable bid/ask prices and production risk controls are not enabled. The multi-asset overview uses public indicative quote endpoints; individual instruments can be unavailable or delayed. Gold and silver currently use futures-market proxies rather than broker spot prices. This market-data layer does not enable trading.
 
 ## Run locally
 
