@@ -8,9 +8,9 @@ FOREXIQ is an AI-assisted market research and trading workspace for forex and cr
 
 - Responsive FOREXIQ workspace and navigation
 - Forex and crypto watchlist interface
-- Server-side multi-asset market overview for major FX pairs, gold and silver futures proxies, energy futures, major indices and selected crypto pairs
+- Server-side multi-asset market overview for major FX pairs, spot gold and silver, energy futures, major indices and selected crypto pairs
 - Searchable market watch with asset-class filters and per-instrument live/unavailable states
-- Market quote refresh every 30 seconds; availability and delays depend on the upstream public data feeds
+- All five asset classes are requested concurrently in one dashboard API response; refresh every 30 seconds. Quotes are labelled live, delayed or unavailable based on their feed
 - Internal market-data provider details are not displayed in the customer-facing interface
 - Searchable instrument list
 - Illustrative chart and dashboard panels
@@ -19,7 +19,7 @@ FOREXIQ is an AI-assisted market research and trading workspace for forex and cr
 
 ## Not yet connected
 
-AI inference, user authentication, database persistence, broker/exchange account connectivity, order execution, deposits, withdrawals, subscriptions, historical chart streaming, executable bid/ask prices and production risk controls are not enabled. The multi-asset overview uses public indicative quote endpoints; individual instruments can be unavailable or delayed. Gold and silver currently use futures-market proxies rather than broker spot prices. This market-data layer does not enable trading.
+AI inference, user authentication, database persistence, broker/exchange account connectivity, order execution, deposits, withdrawals, subscriptions, historical chart streaming, executable bid/ask prices and production risk controls are not enabled. The multi-asset overview combines public reference feeds for FX, metals and crypto with a fallback-capable quote request for energy and indices. FX reference rates and some index/energy quotes may be delayed; the interface distinguishes delayed from live data. Gold and silver use spot reference prices. A provider outage can still make an instrument unavailable; prices are never fabricated. This market-data layer does not enable trading.
 
 ## Run locally
 
