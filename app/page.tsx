@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { Activity, ArrowDownRight, ArrowUpRight, Bell, BrainCircuit, ChevronDown, CircleHelp, LayoutDashboard, LineChart, Menu, Search, ShieldCheck, Sparkles, WalletCards, X } from "lucide-react";
 
 type Group = "FOREX" | "METALS" | "ENERGY" | "INDICES" | "CRYPTO";
@@ -31,7 +32,7 @@ export default function Home() {
       return chartPeriods[(index + direction + chartPeriods.length) % chartPeriods.length];
     });
   };
-  const onChartPointerDown = (event: React.PointerEvent<HTMLDivElement>) => { chartSwipeStart.current = event.clientX; };
+  const onChartPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => { chartSwipeStart.current = event.clientX; };
   const onChartPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
     if (chartSwipeStart.current === null) return;
     const distance = event.clientX - chartSwipeStart.current;
