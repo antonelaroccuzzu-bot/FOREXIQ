@@ -1,30 +1,37 @@
-FOREXIQ
+# FOREXIQ
 
-Trade Smarter. See Further.
+**Trade Smarter. See Further.**
 
-FOREXIQ is an AI-powered trading platform designed to help traders analyze financial markets, understand risk, and make more informed trading decisions.
+FOREXIQ is an AI-assisted market research and trading workspace for forex and cryptocurrency traders. This repository contains the initial Next.js application foundation and responsive terminal dashboard.
 
-Core Features
+## Current implementation
 
-* AI-powered market analysis and trading insights
-* Forex and cryptocurrency market monitoring
-* Real-time price charts and market alerts
-* Risk assessment and trade warnings
-* Secure user accounts and authentication
-* Optional automated trading
-* Trading history and portfolio tracking
-* Premium subscriptions and transparent trading fees
+- Responsive FOREXIQ workspace and navigation
+- Forex and crypto watchlist interface
+- Searchable instrument list
+- Illustrative chart and dashboard panels
+- AI research and security-readiness UI states
+- Clear demo-data labels; sample values are not represented as live market data
 
-Security
+## Not yet connected
 
-FOREXIQ is designed with security, user privacy, and responsible trading in mind. Private keys and sensitive credentials must never be exposed in client-side code.
+Live market data, AI inference, user authentication, database persistence, broker/exchange connectivity, order execution, deposits, withdrawals, subscriptions and production risk controls are not enabled by this initial scaffold. They must be integrated and tested before being advertised as available.
 
-Development Status
+## Run locally
 
-Under development. Live trading, deposits, withdrawals, and market integrations will be marked available only after implementation and testing.
+1. Install Node.js 20 or later.
+2. Run `npm install`.
+3. Copy `.env.example` to `.env.local` when provider credentials are configured.
+4. Run `npm run dev` and open http://localhost:3000.
 
-Disclaimer
+## Deploy
 
-Trading forex and cryptocurrency involves substantial risk. AI-generated analysis does not guarantee profits or eliminate losses.
+Import this GitHub repository into Vercel. The project uses Next.js and requires no environment variables for the initial preview interface.
 
-© FOREXIQ. All rights reserved.
+## Security
+
+Keep API keys and provider secrets in server-side environment variables. Never commit secrets or expose them through `NEXT_PUBLIC_` variables. Do not enable live trading until exchange permissions, authentication, order validation, limits, logging and emergency controls have been implemented and independently tested.
+
+## Risk notice
+
+Forex and cryptocurrency trading involve substantial risk. AI-generated research is informational and does not guarantee profits or prevent losses.
