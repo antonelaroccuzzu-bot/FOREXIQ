@@ -24,7 +24,7 @@ export function GET(request: Request) {
     let heartbeat: ReturnType<typeof setInterval> | undefined;
     let seq = 1;
     const sendClient = (payload: unknown) => {
-      if (client.readyState === 1) client.send(JSON.stringify(payload));
+      try { client.send(JSON.stringify(payload)); } catch { /* Client has disconnected. */ }
     };
     const closeUpstream = () => {
       if (heartbeat) clearInterval(heartbeat);
