@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import MarketCandlestickChart from "./components/MarketCandlestickChart";
+import TradingDirector from "./components/TradingDirector";
 import { Activity, ArrowDownRight, ArrowUpRight, Bell, BrainCircuit, ChevronDown, CircleHelp, LayoutDashboard, LineChart, Menu, Search, ShieldCheck, Sparkles, WalletCards, X } from "lucide-react";
 
 type Group = "FOREX" | "METALS" | "ENERGY" | "INDICES" | "CRYPTO";
@@ -48,6 +49,7 @@ export default function Home() {
     (item.symbol + " " + item.name).toLowerCase().includes(query.toLowerCase())
   ), [quotes, category, query]);
   const receivedCount = quotes.filter((q) => q.status === "live" || q.status === "delayed").length;
+  const liveCount = quotes.filter((q) => q.status === "live").length;
   const statusLabel = feedStatus === "live" ? "ALL FEEDS LIVE" : feedStatus === "partial" ? "MIXED MARKET DATA" : feedStatus === "offline" ? "MARKET FEED OFFLINE" : "CONNECTING MARKET FEED";
   return <main className="shell">
     <aside className={"sidebar " + (mobileOpen ? "sidebar-open" : "")}>
@@ -80,7 +82,7 @@ export default function Home() {
           </div>
           <div className="panel-foot">Prices are indicative reference quotes, not executable bid/ask prices. FX reference rates may be delayed; gold and silver are spot reference prices; energy and index quotes may be delayed; crypto pairs are quoted in USDT.</div>
         </section>
-        <div className="bottom-grid"><section className="panel insight-panel"><div className="panel-head"><div className="title-with-icon"><div className="ai-icon"><BrainCircuit size={17}/></div><div><h3>FOREXIQ Trading Director</h3><p>AI market research assistant</p></div></div><span className="coming-soon">SETUP PENDING</span></div><p className="insight-copy">The Trading Director will summarize market conditions, explain price movements, compare instruments and help assess risk. AI analysis is not connected yet and no trade signals are being issued.</p><button className="outline-button" onClick={()=>setNotice("AI analysis requires a server-side provider key and backend integration.")}>Configure AI research <ArrowUpRight size={15}/></button></section><section className="panel security-panel"><div className="panel-head"><div><h3>Trading readiness</h3><p>Live execution remains disabled</p></div><ShieldCheck size={19}/></div><div className="check-row"><span className="check-pending"/> User accounts <small>Not configured</small></div><div className="check-row"><span className="check-pending"/> Broker / exchange connection <small>Not configured</small></div><div className="check-row"><span className="check-pending"/> Order execution <small>Disabled</small></div><div className="check-row"><span className="check-pending"/> Risk limits & audit logs <small>Required</small></div></section></div>
+        <div className="bottom-grid"><TradingDirector quotes={quotes.map(({symbol,price,change,status})=>({symbol,price,change,status}))}/><section className="panel security-panel"><div className="panel-head"><div><h3>Trading readiness</h3><p>Live execution remains disabled</p></div><ShieldCheck size={19}/></div><div className="check-row"><span className="check-pending"/> User accounts <small>Not configured</small></div><div className="check-row"><span className="check-pending"/> Broker / exchange connection <small>Not configured</small></div><div className="check-row"><span className="check-pending"/> Order execution <small>Disabled</small></div><div className="check-row"><span className="check-pending"/> Risk limits & audit logs <small>Required</small></div></section></div>
         <footer><span>© 2026 FOREXIQ</span><span>Trade Smarter. See Further.</span><span>Trading involves risk. Quotes may be delayed. AI insights are not financial advice.</span></footer>
         {notice&&<div className="toast" role="status">{notice}<button onClick={()=>setNotice("")} aria-label="Dismiss"><X size={15}/></button></div>}
       </div>
