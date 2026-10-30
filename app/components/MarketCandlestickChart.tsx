@@ -76,7 +76,7 @@ export default function MarketCandlestickChart({ symbol, period, onStatus, onDet
           if (packet.type === "error") { setMessage(packet.message || "Live feed unavailable."); return; }
           if (packet.type !== "tick") return;
           const price = Number(packet.price);
-          const tickSeconds = Number(packet.time);
+          const rawTime = Number(packet.time);\n          const tickSeconds = rawTime > 1e12 ? rawTime / 1000 : rawTime;
           if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(tickSeconds)) return;
           const bucket = Math.floor(tickSeconds / intervals[period]) * intervals[period];
           const time = bucket as UTCTimestamp;
@@ -85,7 +85,7 @@ export default function MarketCandlestickChart({ symbol, period, onStatus, onDet
           } else {
             liveCandle = { ...liveCandle, high: Math.max(liveCandle.high, price), low: Math.min(liveCandle.low, price), close: price };
           }
-          seriesRef.current.update(liveCandle);
+          try { seriesRef.current.update(liveCandle); } catch { return; }
           onStatus("live");
           onDetails({ latest: price, low: liveCandle.low, high: liveCandle.high, updatedAt: new Date(tickSeconds * 1000).toISOString() });
           setMessage("");
