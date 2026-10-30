@@ -6,7 +6,7 @@ import { ArrowUpRight, BrainCircuit, LoaderCircle, Send } from "lucide-react";
 type Quote = { symbol: string; price: string; change: string | null; status: string };
 type Message = { role: "user" | "assistant"; content: string };
 
-export default function TradingDirector({ quotes }: { quotes: Quote[] }) {
+export default function TradingDirector({ quotes, aiStatus }: { quotes: Quote[]; aiStatus: "checking" | "connected" | "unavailable" }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,7 +39,7 @@ export default function TradingDirector({ quotes }: { quotes: Quote[] }) {
   }
 
   return <section className="panel insight-panel director-panel">
-    <div className="panel-head"><div className="title-with-icon"><div className="ai-icon"><BrainCircuit size={17}/></div><div><h3>FOREXIQ Trading Director</h3><p>AI market research assistant</p></div></div><span className="coming-soon">AI RESEARCH</span></div>
+    <div className="panel-head"><div className="title-with-icon"><div className="ai-icon"><BrainCircuit size={17}/></div><div><h3>FOREXIQ Trading Director</h3><p>AI market research assistant</p></div></div><span className="coming-soon">{aiStatus === "connected" ? "CONNECTED" : aiStatus === "checking" ? "CHECKING" : "UNAVAILABLE"}</span></div>
     <div className="director-messages" aria-live="polite">
       {messages.length === 0 ? <p className="insight-copy">Ask about market conditions, technical concepts, instrument comparisons or risk management. The assistant receives the dashboard's current quote statuses and must identify delayed or missing data.</p> : messages.map((message, index) => <div className={"director-message " + message.role} key={index}><strong>{message.role === "user" ? "YOU" : "TRADING DIRECTOR"}</strong><p>{message.content}</p></div>)}
       {loading ? <div className="director-loading"><LoaderCircle size={14}/> Analysing market context…</div> : null}
