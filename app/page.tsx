@@ -19,6 +19,7 @@ export default function Home() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [feedStatus, setFeedStatus] = useState<"connecting" | "live" | "partial" | "offline">("connecting");
   const [updatedAt, setUpdatedAt] = useState("");
+  const [aiStatus, setAiStatus] = useState<"checking" | "connected" | "unavailable">("checking");
   const [chartSymbol, setChartSymbol] = useState("BTC/USDT");
   const [chartPeriod, setChartPeriod] = useState<"1D" | "1W" | "1M" | "1Y">("1D");
   const [chartStatus, setChartStatus] = useState<"loading" | "live" | "delayed" | "error">("loading");
@@ -28,6 +29,7 @@ export default function Home() {
   const handleChartDetails = useCallback((details: { latest: number; low: number; high: number; updatedAt: string }) => setChartDetails(details), []);
   useEffect(() => {
     let activeRequest = true;
+    fetch("/api/ai/research", { cache: "no-store" }).then(async response => { const data = await response.json(); if (activeRequest) setAiStatus(response.ok && data.connected ? "connected" : "unavailable"); }).catch(() => { if (activeRequest) setAiStatus("unavailable"); });
     let timer: ReturnType<typeof setInterval> | undefined;
     const load = async () => {
       try {
@@ -50,6 +52,7 @@ export default function Home() {
   ), [quotes, category, query]);
   const receivedCount = quotes.filter((q) => q.status === "live" || q.status === "delayed").length;
   const liveCount = quotes.filter((q) => q.status === "live").length;
+  const delayedCount = quotes.filter((q) => q.status === "delayed").length;
   const statusLabel = feedStatus === "live" ? "ALL FEEDS LIVE" : feedStatus === "partial" ? "MIXED MARKET DATA" : feedStatus === "offline" ? "MARKET FEED OFFLINE" : "CONNECTING MARKET FEED";
   return <main className="shell">
     <aside className={"sidebar " + (mobileOpen ? "sidebar-open" : "")}>
@@ -72,7 +75,7 @@ export default function Home() {
           <div className="live-chart-footer"><span>LOW {chartDetails.low ? chartDetails.low.toLocaleString("en-US",{maximumFractionDigits:5}) : "—"}</span><span>{chartDetails.updatedAt ? "Updated "+new Date(chartDetails.updatedAt).toLocaleTimeString("en-US") : "Connecting…"}</span><span>HIGH {chartDetails.high ? chartDetails.high.toLocaleString("en-US",{maximumFractionDigits:5}) : "—"}</span></div><p className="chart-disclaimer">A chart is marked LIVE only after a verified streaming tick arrives. Historical candles are reference data. This chart does not execute trades.</p>
         </section>
         <div className="section-heading"><div><h2>Global markets</h2><p>Live, delayed and unavailable instruments across asset classes</p></div><span className="market-count">{receivedCount} quotes received</span></div>
-        <div className="stat-grid"><article className="stat-card"><div className="stat-top"><span>Quotes received</span><Activity size={17}/></div><div className="stat-value">{String(liveCount).padStart(2,"0")} <small>/ {quotes.length || 23} tracked</small></div><div className="stat-foot"><span className="green-dot"/> Live or delayed reference data</div></article><article className="stat-card"><div className="stat-top"><span>Asset classes</span><LineChart size={17}/></div><div className="stat-value">05 <small>markets</small></div><div className="stat-foot"><span className="neutral-dot"/> FX · metals · energy · indices · crypto</div></article><article className="stat-card"><div className="stat-top"><span>AI research</span><BrainCircuit size={17}/></div><div className="stat-value">Setup pending</div><div className="stat-foot"><span className="neutral-dot"/> AI provider not connected</div></article></div>
+        <div className="stat-grid"><article className="stat-card"><div className="stat-top"><span>Live feeds</span><Activity size={17}/></div><div className="stat-value">{String(liveCount).padStart(2,"0")} <small>/ {quotes.length || 23} instruments</small></div><div className="stat-foot"><span className="green-dot"/>{liveCount} live · {delayedCount} delayed</div></article><article className="stat-card"><div className="stat-top"><span>Asset classes</span><LineChart size={17}/></div><div className="stat-value">05 <small>markets</small></div><div className="stat-foot"><span className="neutral-dot"/> FX · metals · energy · indices · crypto</div></article><article className="stat-card"><div className="stat-top"><span>AI research</span><BrainCircuit size={17}/></div><div className="stat-value">{aiStatus === "checking" ? "Checking…" : aiStatus === "connected" ? "Connected" : "Unavailable"}</div><div className="stat-foot"><span className={aiStatus === "connected" ? "green-dot" : "neutral-dot"}/>{aiStatus === "connected" ? "OpenRouter API verified" : aiStatus === "checking" ? "Checking provider access" : "Provider key or access needs attention"}</div></article></div>
         <section className="panel market-panel full-market-panel">
           <div className="panel-head"><div><h3>Market watch</h3><p>Search and filter instruments across global markets</p></div><span className="feed-refresh">{updatedAt ? "Updated " + new Date(updatedAt).toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit"}) : "Awaiting first quote"}</span></div>
           <div className="market-controls"><div className="search-wrap"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search gold, EUR/USD, Bitcoin..."/></div><div className="market-tabs">{categories.map((item)=><button key={item} className={category===item?"market-tab-active":""} onClick={()=>setCategory(item)}>{item}</button>)}</div></div>
@@ -82,7 +85,7 @@ export default function Home() {
           </div>
           <div className="panel-foot">Prices are indicative reference quotes, not executable bid/ask prices. FX reference rates may be delayed; gold and silver are spot reference prices; energy and index quotes may be delayed; crypto pairs are quoted in USDT.</div>
         </section>
-        <div className="bottom-grid"><TradingDirector quotes={quotes.map(({symbol,price,change,status})=>({symbol,price,change,status}))}/><section className="panel security-panel"><div className="panel-head"><div><h3>Trading readiness</h3><p>Live execution remains disabled</p></div><ShieldCheck size={19}/></div><div className="check-row"><span className="check-pending"/> User accounts <small>Not configured</small></div><div className="check-row"><span className="check-pending"/> Broker / exchange connection <small>Not configured</small></div><div className="check-row"><span className="check-pending"/> Order execution <small>Disabled</small></div><div className="check-row"><span className="check-pending"/> Risk limits & audit logs <small>Required</small></div></section></div>
+        <div className="bottom-grid"><TradingDirector quotes={quotes.map(({symbol,price,change,status})=>({symbol,price,change,status}))} aiStatus={aiStatus}/><section className="panel security-panel"><div className="panel-head"><div><h3>Trading readiness</h3><p>Live execution remains disabled</p></div><ShieldCheck size={19}/></div><div className="check-row"><span className="check-pending"/> User accounts <small>Not configured</small></div><div className="check-row"><span className="check-pending"/> Broker / exchange connection <small>Not configured</small></div><div className="check-row"><span className="check-pending"/> Order execution <small>Disabled</small></div><div className="check-row"><span className="check-pending"/> Risk limits & audit logs <small>Required</small></div></section></div>
         <footer><span>© 2026 FOREXIQ</span><span>Trade Smarter. See Further.</span><span>Trading involves risk. Quotes may be delayed. AI insights are not financial advice.</span></footer>
         {notice&&<div className="toast" role="status">{notice}<button onClick={()=>setNotice("")} aria-label="Dismiss"><X size={15}/></button></div>}
       </div>
