@@ -146,6 +146,9 @@ export async function GET() {
     }
   }));
 
-  const availableCount = quotes.filter((q) => q.status !== "unavailable").length;
-  return NextResponse.json({ updatedAt: now(), availableCount, totalCount: quotes.length, quotes }, { headers: { "Cache-Control": "no-store, max-age=0" } });
+  const liveCount = quotes.filter((q) => q.status === "live").length;
+  const delayedCount = quotes.filter((q) => q.status === "delayed").length;
+  const unavailableCount = quotes.filter((q) => q.status === "unavailable").length;
+  const availableCount = liveCount + delayedCount;
+  return NextResponse.json({ updatedAt: now(), availableCount, liveCount, delayedCount, unavailableCount, totalCount: quotes.length, quotes }, { headers: { "Cache-Control": "no-store, max-age=0" } });
 }
