@@ -23,7 +23,7 @@ const SYMBOLS: Record<string, { crypto?: string; yahoo: string }> = {
 
 const PERIODS = {
   "1D": { yahooRange: "1d", yahooInterval: "5m", cryptoInterval: "5m", limit: 300 },
-  "1W": { yahooRange: "7d", yahooInterval: "15m", cryptoInterval: "15m", limit: 700 },
+  "1W": { yahooRange: "5d", yahooInterval: "15m", cryptoInterval: "15m", limit: 700 },
   "1M": { yahooRange: "1mo", yahooInterval: "1h", cryptoInterval: "1h", limit: 750 },
   "1Y": { yahooRange: "1y", yahooInterval: "1d", cryptoInterval: "1d", limit: 370 },
 } as const;
