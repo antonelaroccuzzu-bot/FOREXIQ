@@ -36,7 +36,7 @@ export default function Home() {
         if (!activeRequest) return;
         setQuotes(data.quotes ?? []);
         setUpdatedAt(data.updatedAt ?? "");
-        setFeedStatus(data.availableCount === data.totalCount ? "live" : data.availableCount > 0 ? "partial" : "offline");
+        setFeedStatus(data.liveCount === data.totalCount ? "live" : data.availableCount > 0 ? "partial" : "offline");
       } catch { if (activeRequest) setFeedStatus("offline"); }
     };
     load();
@@ -47,8 +47,8 @@ export default function Home() {
     (category === "ALL" || item.group === category) &&
     (item.symbol + " " + item.name).toLowerCase().includes(query.toLowerCase())
   ), [quotes, category, query]);
-  const liveCount = quotes.filter((q) => q.status === "live" || q.status === "delayed").length;
-  const statusLabel = feedStatus === "live" ? "ALL QUOTES AVAILABLE" : feedStatus === "partial" ? "PARTIAL MARKET FEED" : feedStatus === "offline" ? "MARKET FEED OFFLINE" : "CONNECTING MARKET FEED";
+  const receivedCount = quotes.filter((q) => q.status === "live" || q.status === "delayed").length;
+  const statusLabel = feedStatus === "live" ? "ALL FEEDS LIVE" : feedStatus === "partial" ? "MIXED MARKET DATA" : feedStatus === "offline" ? "MARKET FEED OFFLINE" : "CONNECTING MARKET FEED";
   return <main className="shell">
     <aside className={"sidebar " + (mobileOpen ? "sidebar-open" : "")}>
       <div className="brand"><div className="brand-mark">F</div><div><strong>FOREX<span>IQ</span></strong><small>INTELLIGENCE TERMINAL</small></div><button className="mobile-close" onClick={() => setMobileOpen(false)} aria-label="Close menu"><X size={18}/></button></div>
@@ -61,7 +61,7 @@ export default function Home() {
       <header className="topbar"><div className="top-left"><button className="menu-button" onClick={()=>setMobileOpen(true)} aria-label="Open menu"><Menu size={20}/></button><span className="breadcrumb">Workspace</span><span className="crumb-sep">/</span><strong>{active}</strong></div><div className="top-actions"><div className={"status " + (feedStatus === "live" ? "status-live" : "")}><span/> {statusLabel}</div><button className="icon-button" aria-label="Notifications" onClick={()=>setNotice("You are all caught up.")}><Bell size={18}/></button><div className="avatar small-avatar">V</div></div></header>
       <div className="content">
         <div className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line"/> GLOBAL MARKET INTELLIGENCE</div><h1>{active==="Overview"?"One terminal. Multiple markets.":active}</h1><p className="subheading">Monitor forex, precious metals, energy, global indices and digital assets.</p></div></div>
-        <div className="preview-banner"><div className="preview-symbol"><Activity size={18}/></div><div><strong>Market data connection</strong><p>All market categories are requested together and the board refreshes every 30 seconds. LIVE means a connected streaming feed; DELAYED means reference data. Indicative prices are not executable broker prices. Trading is not enabled.</p></div><span className="preview-pill">{liveCount} / {quotes.length || 23} QUOTES RECEIVED</span></div>
+        <div className="preview-banner"><div className="preview-symbol"><Activity size={18}/></div><div><strong>Market data connection</strong><p>All market categories are requested together and the board refreshes every 30 seconds. LIVE means a connected streaming feed; DELAYED means reference data. Indicative prices are not executable broker prices. Trading is not enabled.</p></div><span className="preview-pill">{receivedCount} / {quotes.length || 23} QUOTES RECEIVED</span></div>
         <section className="panel live-chart-panel">
           <div className="panel-head"><div><h3>Live market chart</h3><p>{chartSymbol} · live exchange stream where available</p></div><span className={"quote-status " + (chartStatus === "error" ? "unavailable" : chartStatus === "delayed" ? "delayed" : "live")}>{chartStatus === "loading" ? "LOADING" : chartStatus === "error" ? "DATA UNAVAILABLE" : chartStatus === "live" ? "LIVE FEED" : "DELAYED FEED"}</span></div>
           <div className="live-chart-controls"><select aria-label="Chart instrument" value={chartSymbol} onChange={e=>setChartSymbol(e.target.value)}>{quotes.map(q=><option key={q.symbol} value={q.symbol}>{q.symbol} — {q.name}</option>)}</select><div className="periods" aria-label="Chart timeframe">{chartPeriods.map(p=><button key={p} className={chartPeriod===p?"period-active":""} onClick={()=>setChartPeriod(p)}>{p}</button>)}</div></div>
@@ -69,7 +69,7 @@ export default function Home() {
           <MarketCandlestickChart symbol={chartSymbol} period={chartPeriod} onStatus={handleChartStatus} onDetails={handleChartDetails}/>
           <div className="live-chart-footer"><span>LOW {chartDetails.low ? chartDetails.low.toLocaleString("en-US",{maximumFractionDigits:5}) : "—"}</span><span>{chartDetails.updatedAt ? "Updated "+new Date(chartDetails.updatedAt).toLocaleTimeString("en-US") : "Connecting…"}</span><span>HIGH {chartDetails.high ? chartDetails.high.toLocaleString("en-US",{maximumFractionDigits:5}) : "—"}</span></div><p className="chart-disclaimer">A chart is marked LIVE only after a verified streaming tick arrives. Historical candles are reference data. This chart does not execute trades.</p>
         </section>
-        <div className="section-heading"><div><h2>Global markets</h2><p>Live, delayed and unavailable instruments across asset classes</p></div><span className="market-count">{liveCount} quotes received</span></div>
+        <div className="section-heading"><div><h2>Global markets</h2><p>Live, delayed and unavailable instruments across asset classes</p></div><span className="market-count">{receivedCount} quotes received</span></div>
         <div className="stat-grid"><article className="stat-card"><div className="stat-top"><span>Quotes received</span><Activity size={17}/></div><div className="stat-value">{String(liveCount).padStart(2,"0")} <small>/ {quotes.length || 23} tracked</small></div><div className="stat-foot"><span className="green-dot"/> Live or delayed reference data</div></article><article className="stat-card"><div className="stat-top"><span>Asset classes</span><LineChart size={17}/></div><div className="stat-value">05 <small>markets</small></div><div className="stat-foot"><span className="neutral-dot"/> FX · metals · energy · indices · crypto</div></article><article className="stat-card"><div className="stat-top"><span>AI research</span><BrainCircuit size={17}/></div><div className="stat-value">Setup pending</div><div className="stat-foot"><span className="neutral-dot"/> AI provider not connected</div></article></div>
         <section className="panel market-panel full-market-panel">
           <div className="panel-head"><div><h3>Market watch</h3><p>Search and filter instruments across global markets</p></div><span className="feed-refresh">{updatedAt ? "Updated " + new Date(updatedAt).toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit"}) : "Awaiting first quote"}</span></div>
