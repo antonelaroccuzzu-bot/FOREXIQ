@@ -54,7 +54,7 @@ export function GET(request: Request) {
             const price = Number(packet.data.price);
             const time = Number(packet.data.tick_time);
             if (Number.isFinite(price) && price > 0 && Number.isFinite(time)) sendClient({ type: "tick", symbol, price, time });
-          } else if (Number(packet.ret) !== 0 && packet.ret !== undefined) {
+          } else if (packet.ret !== undefined && ![0, 200].includes(Number(packet.ret))) {
             sendClient({ type: "error", message: "AllTick rejected this instrument subscription." });
           }
         } catch { /* Ignore malformed provider messages. */ }
