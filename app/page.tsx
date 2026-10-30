@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import MarketCandlestickChart from "./components/MarketCandlestickChart";
 import { Activity, ArrowDownRight, ArrowUpRight, Bell, BrainCircuit, ChevronDown, CircleHelp, LayoutDashboard, LineChart, Menu, Search, ShieldCheck, Sparkles, WalletCards, X } from "lucide-react";
 
 type Group = "FOREX" | "METALS" | "ENERGY" | "INDICES" | "CRYPTO";
 type Quote = { symbol: string; name: string; group: Group; price: string; change: string | null; up: boolean | null; currency: string; status: "live" | "delayed" | "unavailable"; updatedAt: string | null };
-type ChartPoint = { time: number; value: number };
 const categories = ["ALL", "FOREX", "METALS", "ENERGY", "INDICES", "CRYPTO"] as const;
 const nav = [{ label: "Overview", icon: LayoutDashboard }, { label: "Markets", icon: LineChart }, { label: "AI Research", icon: BrainCircuit }, { label: "Risk Center", icon: ShieldCheck }, { label: "Portfolio", icon: WalletCards }];
 
@@ -21,54 +20,11 @@ export default function Home() {
   const [updatedAt, setUpdatedAt] = useState("");
   const [chartSymbol, setChartSymbol] = useState("BTC/USDT");
   const [chartPeriod, setChartPeriod] = useState<"1D" | "1W" | "1M" | "1Y">("1D");
-  const [chartPoints, setChartPoints] = useState<ChartPoint[]>([]);
   const [chartStatus, setChartStatus] = useState<"loading" | "live" | "delayed" | "error">("loading");
-  const [chartUpdatedAt, setChartUpdatedAt] = useState("");
-  const chartSwipeStart = useRef<number | null>(null);
+  const [chartDetails, setChartDetails] = useState({ latest: 0, low: 0, high: 0, updatedAt: "" });
   const chartPeriods = ["1D", "1W", "1M", "1Y"] as const;
-  const moveChartPeriod = (direction: number) => {
-    setChartPeriod((current) => {
-      const index = chartPeriods.indexOf(current);
-      return chartPeriods[(index + direction + chartPeriods.length) % chartPeriods.length];
-    });
-  };
-  const onChartPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => { chartSwipeStart.current = event.clientX; };
-  const onChartPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (chartSwipeStart.current === null) return;
-    const distance = event.clientX - chartSwipeStart.current;
-    chartSwipeStart.current = null;
-    if (Math.abs(distance) > 45) moveChartPeriod(distance < 0 ? 1 : -1);
-  };
-  useEffect(() => {
-    let activeRequest = true;
-    let timer: ReturnType<typeof setInterval> | undefined;
-    const loadChart = async () => {
-      try {
-        const response = await fetch(`/api/market/chart?symbol=${encodeURIComponent(chartSymbol)}&period=${chartPeriod}`, { cache: "no-store" });
-        if (!response.ok) throw new Error("Chart unavailable");
-        const data = await response.json();
-        if (!activeRequest) return;
-        setChartPoints(data.points ?? []);
-        setChartStatus(data.sourceStatus ?? "delayed");
-        setChartUpdatedAt(data.updatedAt ?? "");
-      } catch { if (activeRequest) setChartStatus("error"); }
-    };
-    setChartStatus("loading");
-    loadChart();
-    timer = setInterval(loadChart, 15000);
-    return () => { activeRequest = false; if (timer) clearInterval(timer); };
-  }, [chartSymbol, chartPeriod]);
-  const chartGeometry = useMemo(() => {
-    if (!chartPoints.length) return { line: "", area: "", min: 0, max: 0, latest: 0, first: 0 };
-    const values = chartPoints.map((point) => point.value);
-    const min = Math.min(...values), max = Math.max(...values), span = max - min || Math.abs(max) * 0.001 || 1;
-    const line = chartPoints.map((point, index) => {
-      const x = chartPoints.length === 1 ? 0 : (index / (chartPoints.length - 1)) * 1000;
-      const y = 190 - ((point.value - min) / span) * 170;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(" ");
-    return { line, area: `0,200 ${line} 1000,200`, min, max, latest: values[values.length - 1], first: values[0] };
-  }, [chartPoints]);
+  const handleChartStatus = useCallback((status: "loading" | "live" | "delayed" | "error") => setChartStatus(status), []);
+  const handleChartDetails = useCallback((details: { latest: number; low: number; high: number; updatedAt: string }) => setChartDetails(details), []);
   useEffect(() => {
     let activeRequest = true;
     let timer: ReturnType<typeof setInterval> | undefined;
@@ -109,10 +65,9 @@ export default function Home() {
         <section className="panel live-chart-panel">
           <div className="panel-head"><div><h3>Live market chart</h3><p>{chartSymbol} · refreshed every 15 seconds</p></div><span className={"quote-status " + (chartStatus === "error" ? "unavailable" : chartStatus === "delayed" ? "delayed" : "live")}>{chartStatus === "loading" ? "LOADING" : chartStatus === "error" ? "DATA UNAVAILABLE" : chartStatus === "live" ? "LIVE FEED" : "DELAYED FEED"}</span></div>
           <div className="live-chart-controls"><select aria-label="Chart instrument" value={chartSymbol} onChange={e=>setChartSymbol(e.target.value)}>{quotes.map(q=><option key={q.symbol} value={q.symbol}>{q.symbol} — {q.name}</option>)}</select><div className="periods" aria-label="Chart timeframe">{chartPeriods.map(p=><button key={p} className={chartPeriod===p?"period-active":""} onClick={()=>setChartPeriod(p)}>{p}</button>)}</div></div>
-          <div className="live-chart-summary"><strong>{chartGeometry.latest ? chartGeometry.latest.toLocaleString("en-US",{maximumFractionDigits: chartSymbol.includes("JPY")?3:5}) : "—"}</strong><span>{chartGeometry.first && chartGeometry.latest ? ((chartGeometry.latest-chartGeometry.first)/chartGeometry.first*100>=0?"+":"")+((chartGeometry.latest-chartGeometry.first)/chartGeometry.first*100).toFixed(2)+"% over selected period" : "Waiting for chart data"}</span></div>
-          <div className="live-chart-plot" onPointerDown={onChartPointerDown} onPointerUp={onChartPointerUp} onPointerCancel={()=>{chartSwipeStart.current=null;}} onPointerLeave={()=>{chartSwipeStart.current=null;}}>{chartPoints.length ? <svg viewBox="0 0 1000 200" preserveAspectRatio="none" role="img" aria-label={chartSymbol+" price chart"}><defs><linearGradient id="chartFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#24d6a0" stopOpacity=".22"/><stop offset="100%" stopColor="#24d6a0" stopOpacity="0"/></linearGradient></defs>{[25,75,125,175].map(y=><line key={y} x1="0" x2="1000" y1={y} y2={y} stroke="#26333d" strokeDasharray="4 6"/>)}<polygon points={chartGeometry.area} fill="url(#chartFill)"/><polyline points={chartGeometry.line} fill="none" stroke="#24d6a0" strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round"/></svg> : <div className="chart-empty">{chartStatus==="error"?"Chart feed unavailable for this instrument. Try another market or timeframe.":"Loading historical price points…"}</div>}</div>
-          <div className="live-chart-footer"><span>LOW {chartGeometry.min ? chartGeometry.min.toLocaleString("en-US",{maximumFractionDigits:5}) : "—"}</span><span>{chartUpdatedAt ? "Updated "+new Date(chartUpdatedAt).toLocaleTimeString("en-US") : "Connecting…"}</span><span>HIGH {chartGeometry.max ? chartGeometry.max.toLocaleString("en-US",{maximumFractionDigits:5}) : "—"}</span></div>
-          <p className="chart-swipe-hint">← Swipe or drag the chart left/right to change timeframe →</p><p className="chart-disclaimer">Indicative market history. Crypto uses live candle data; other markets may be delayed. This chart does not execute trades.</p>
+          <div className="live-chart-summary"><strong>{chartDetails.latest ? chartDetails.latest.toLocaleString("en-US",{maximumFractionDigits: chartSymbol.includes("JPY")?3:5}) : "—"}</strong><span>{chartStatus==="live"?"Live exchange candle stream":chartStatus==="delayed"?"Delayed reference candles":chartStatus==="error"?"Waiting for market data":"Connecting to market data…"}</span></div>
+          <MarketCandlestickChart symbol={chartSymbol} period={chartPeriod} onStatus={handleChartStatus} onDetails={handleChartDetails}/>
+          <div className="live-chart-footer"><span>LOW {chartDetails.low ? chartDetails.low.toLocaleString("en-US",{maximumFractionDigits:5}) : "—"}</span><span>{chartDetails.updatedAt ? "Updated "+new Date(chartDetails.updatedAt).toLocaleTimeString("en-US") : "Connecting…"}</span><span>HIGH {chartDetails.high ? chartDetails.high.toLocaleString("en-US",{maximumFractionDigits:5}) : "—"}</span></div><p className="chart-disclaimer">Indicative market history. Crypto uses live candle data; other markets may be delayed. This chart does not execute trades.</p>
         </section>
         <div className="section-heading"><div><h2>Global markets</h2><p>Available market quotes across asset classes</p></div><span className="market-count">{liveCount} available quotes</span></div>
         <div className="stat-grid"><article className="stat-card"><div className="stat-top"><span>Available quotes</span><Activity size={17}/></div><div className="stat-value">{String(liveCount).padStart(2,"0")} <small>/ {quotes.length || 23} tracked</small></div><div className="stat-foot"><span className="green-dot"/> Live or delayed quotes available</div></article><article className="stat-card"><div className="stat-top"><span>Asset classes</span><LineChart size={17}/></div><div className="stat-value">05 <small>markets</small></div><div className="stat-foot"><span className="neutral-dot"/> FX · metals · energy · indices · crypto</div></article><article className="stat-card"><div className="stat-top"><span>AI research</span><BrainCircuit size={17}/></div><div className="stat-value">Setup pending</div><div className="stat-foot"><span className="neutral-dot"/> AI provider not connected</div></article></div>
