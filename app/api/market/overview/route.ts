@@ -59,7 +59,7 @@ async function metalQuotes() {
     const data = await getJson("https://api.gold-api.com/price/" + item.metal);
     const price = Number(data.price);
     if (!Number.isFinite(price) || price <= 0) throw new Error("Metal quote unavailable");
-    return [item.symbol, { price, change: Number.isFinite(Number(data.chp)) ? Number(data.chp) : null, currency: data.currency || "USD", updatedAt: data.updatedAt || now(), status: "live" as const }] as const;
+    return [item.symbol, { price, change: Number.isFinite(Number(data.chp)) ? Number(data.chp) : null, currency: data.currency || "USD", updatedAt: data.updatedAt || now(), status: "delayed" as const }] as const;
   }));
   return new Map(entries);
 }
@@ -73,7 +73,7 @@ async function cryptoQuotes() {
       for (const item of wanted) {
         const row = rows.find((x) => x.symbol === item.crypto);
         const price = Number(row?.lastPrice);
-        if (row && Number.isFinite(price) && price > 0) map.set(item.symbol, { price, change: Number(row.priceChangePercent), currency: "USDT", updatedAt: now(), status: "live" });
+        if (row && Number.isFinite(price) && price > 0) map.set(item.symbol, { price, change: Number(row.priceChangePercent), currency: "USDT", updatedAt: now(), status: "delayed" });
       }
     },
     async () => {
