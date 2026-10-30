@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
         "X-Title": "FOREXIQ Trading Director",
       },
       body: JSON.stringify({
-        model: process.env.OPENROUTER_MODEL || "openrouter/auto",
+        model: process.env.OPENROUTER_MODEL || "openrouter/free",
         messages: [{ role: "system", content: SYSTEM_PROMPT + marketContext }, ...messages],
         temperature: 0.2,
         max_tokens: 900,
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     const payload = await response.json();
     const answer = payload?.choices?.[0]?.message?.content;
     if (typeof answer !== "string" || !answer.trim()) throw new Error("Empty AI response");
-    return NextResponse.json({ answer: answer.trim(), model: payload.model || process.env.OPENROUTER_MODEL || "openrouter/auto" }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ answer: answer.trim(), model: payload.model || process.env.OPENROUTER_MODEL || "openrouter/free" }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "FOREXIQ could not reach the AI provider. Please try again." }, { status: 502 });
   }
