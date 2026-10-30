@@ -65,13 +65,40 @@ async function metalQuotes() {
 }
 
 async function cryptoQuotes() {
-  const rows = await getJson("https://api.binance.com/api/v3/ticker/24hr", 10000) as Array<{ symbol: string; lastPrice: string; priceChangePercent: string }>;
   const wanted = INSTRUMENTS.filter((x) => x.crypto);
   const map = new Map<string, QuoteValue>();
-  for (const item of wanted) {
-    const row = rows.find((x) => x.symbol === item.crypto);
-    const price = Number(row?.lastPrice);
-    if (row && Number.isFinite(price) && price > 0) map.set(item.symbol, { price, change: Number(row.priceChangePercent), currency: "USDT", updatedAt: now(), status: "live" });
+  const sources = [
+    async () => {
+      const rows = await getJson("https://api.binance.com/api/v3/ticker/24hr", 8000) as Array<{ symbol: string; lastPrice: string; priceChangePercent: string }>;
+      for (const item of wanted) {
+        const row = rows.find((x) => x.symbol === item.crypto);
+        const price = Number(row?.lastPrice);
+        if (row && Number.isFinite(price) && price > 0) map.set(item.symbol, { price, change: Number(row.priceChangePercent), currency: "USDT", updatedAt: now(), status: "live" });
+      }
+    },
+    async () => {
+      const rows = await getJson("https://data-api.binance.vision/api/v3/ticker/24hr", 8000) as Array<{ symbol: string; lastPrice: string; priceChangePercent: string }>;
+      for (const item of wanted) {
+        if (map.has(item.symbol)) continue;
+        const row = rows.find((x) => x.symbol === item.crypto);
+        const price = Number(row?.lastPrice);
+        if (row && Number.isFinite(price) && price > 0) map.set(item.symbol, { price, change: Number(row.priceChangePercent), currency: "USDT", updatedAt: now(), status: "live" });
+      }
+    },
+    async () => {
+      const rows = await getJson("https://api.bybit.com/v5/market/tickers?category=spot", 8000);
+      const list = rows?.result?.list || [];
+      for (const item of wanted) {
+        if (map.has(item.symbol)) continue;
+        const row = list.find((x: any) => x.symbol === item.crypto);
+        const price = Number(row?.lastPrice);
+        if (row && Number.isFinite(price) && price > 0) map.set(item.symbol, { price, change: Number(row.price24hPcnt) * 100, currency: "USDT", updatedAt: now(), status: "live" });
+      }
+    },
+  ];
+  for (const source of sources) {
+    try { await source(); } catch { /* Try the next public market-data source. */ }
+    if (map.size === wanted.length) break;
   }
   return map;
 }
