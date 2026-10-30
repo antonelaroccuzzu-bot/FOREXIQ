@@ -9,6 +9,16 @@ Never claim to have live data unless it is included in the user's market snapsho
 Do not guarantee returns, invent prices, or present uncertain analysis as fact. Do not execute trades or claim to connect to a broker.
 For trade ideas, explain assumptions, invalidation levels, and downside risks. This is educational information, not personalized financial advice.`;
 
+export async function GET() {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return NextResponse.json({ connected: false, reason: "missing_key" }, { status: 503 });
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/models", { headers: { Authorization: "Bearer " + apiKey, accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(10000) });
+    if (!response.ok) return NextResponse.json({ connected: false, reason: "provider_rejected_key" }, { status: 503 });
+    return NextResponse.json({ connected: true }, { headers: { "Cache-Control": "no-store" } });
+  } catch { return NextResponse.json({ connected: false, reason: "provider_unreachable" }, { status: 503 }); }
+}
+
 export async function POST(request: NextRequest) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
