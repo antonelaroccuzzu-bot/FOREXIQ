@@ -59,7 +59,7 @@ export default function MarketCandlestickChart({ symbol, period, onStatus, onDet
         if (!candles.length) throw new Error("No candles returned");
         series.setData(candles);
         chart.timeScale().fitContent();
-        onStatus(payload.sourceStatus === "live" ? "live" : "delayed");
+        onStatus(payload.sourceStatus === "delayed" ? "delayed" : "loading");
         const latest = candles[candles.length - 1];
         onDetails({ latest: latest.close, low: Math.min(...candles.map(c => c.low)), high: Math.max(...candles.map(c => c.high)), updatedAt: payload.updatedAt || new Date().toISOString() });
         setMessage("");
@@ -76,6 +76,9 @@ export default function MarketCandlestickChart({ symbol, period, onStatus, onDet
       if (crypto) {
         try {
           socket = new WebSocket(`wss://stream.binance.com:9443/ws/${crypto[1].toLowerCase()}usdt@kline_${intervals[period]}`);
+          socket.onopen = () => { if (alive) onStatus("live"); };
+          socket.onclose = () => { if (alive) onStatus("delayed"); };
+          socket.onerror = () => { if (alive) onStatus("delayed"); };
           socket.onmessage = (event) => {
             if (!alive || !seriesRef.current) return;
             try {
@@ -89,7 +92,6 @@ export default function MarketCandlestickChart({ symbol, period, onStatus, onDet
               onDetails({ latest: candle.close, low: candle.low, high: candle.high, updatedAt: new Date().toISOString() });
             } catch { /* Ignore malformed stream frames. */ }
           };
-          socket.onerror = () => { /* Keep historical candles visible if the stream disconnects. */ };
         } catch { /* Historical data remains usable without the live socket. */ }
       }
     };
