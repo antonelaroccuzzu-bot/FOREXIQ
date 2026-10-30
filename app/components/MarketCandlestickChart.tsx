@@ -6,11 +6,10 @@ import { CandlestickSeries, ColorType, createChart, type CandlestickData, type I
 type CandlePayload = { time: number; open: number; high: number; low: number; close: number };
 type Props = { symbol: string; period: "1D" | "1W" | "1M" | "1Y"; onStatus: (status: "loading" | "live" | "delayed" | "error") => void; onDetails: (details: { latest: number; low: number; high: number; updatedAt: string }) => void };
 
-const intervals = { "1D": "1m", "1W": "15m", "1M": "1h", "1Y": "1d" } as const;
+const intervals = { "1D": 60, "1W": 900, "1M": 3600, "1Y": 86400 } as const;
 
 export default function MarketCandlestickChart({ symbol, period, onStatus, onDetails }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const [message, setMessage] = useState("Loading market candles…");
 
@@ -21,13 +20,13 @@ export default function MarketCandlestickChart({ symbol, period, onStatus, onDet
     let socket: WebSocket | null = null;
     let resizeObserver: ResizeObserver | null = null;
     let chart: IChartApi | null = null;
+    let liveCandle: { time: UTCTimestamp; open: number; high: number; low: number; close: number } | null = null;
     onStatus("loading");
     setMessage("Loading market candles…");
 
     const start = async () => {
       chart = createChart(host, {
-        width: host.clientWidth,
-        height: host.clientHeight,
+        width: host.clientWidth, height: host.clientHeight,
         layout: { background: { type: ColorType.Solid, color: "#0b141b" }, textColor: "#91a3ad", fontFamily: "Inter, system-ui, sans-serif" },
         grid: { vertLines: { color: "#182832" }, horzLines: { color: "#182832" } },
         rightPriceScale: { borderColor: "#263640", scaleMargins: { top: 0.12, bottom: 0.12 } },
@@ -40,7 +39,6 @@ export default function MarketCandlestickChart({ symbol, period, onStatus, onDet
         upColor: "#20c997", downColor: "#f05b67", borderUpColor: "#20c997", borderDownColor: "#f05b67",
         wickUpColor: "#20c997", wickDownColor: "#f05b67",
       });
-      chartRef.current = chart;
       seriesRef.current = series;
       resizeObserver = new ResizeObserver((entries) => {
         const rect = entries[0]?.contentRect;
@@ -59,41 +57,42 @@ export default function MarketCandlestickChart({ symbol, period, onStatus, onDet
         if (!candles.length) throw new Error("No candles returned");
         series.setData(candles);
         chart.timeScale().fitContent();
-        onStatus(payload.sourceStatus === "delayed" ? "delayed" : "loading");
+        onStatus("delayed");
         const latest = candles[candles.length - 1];
         onDetails({ latest: latest.close, low: Math.min(...candles.map(c => c.low)), high: Math.max(...candles.map(c => c.high)), updatedAt: payload.updatedAt || new Date().toISOString() });
         setMessage("");
       } catch {
         if (!alive) return;
         onStatus("error");
-        setMessage("Chart feed unavailable. Please try again shortly.");
+        setMessage("Chart history unavailable. Please try again shortly.");
         return;
       }
 
-      // Crypto candles are then updated from the exchange's public kline stream.
-      // Other instruments retain their source's explicitly delayed status.
-      const crypto = symbol.match(/^([A-Z0-9]+)\/USDT$/);
-      if (crypto) {
+      socket = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/market/stream?symbol=${encodeURIComponent(symbol)}`);
+      socket.onmessage = (event) => {
+        if (!alive || !seriesRef.current) return;
         try {
-          socket = new WebSocket(`wss://stream.binance.com:9443/ws/${crypto[1].toLowerCase()}usdt@kline_${intervals[period]}`);
-          socket.onopen = () => { if (alive) onStatus("live"); };
-          socket.onclose = () => { if (alive) onStatus("delayed"); };
-          socket.onerror = () => { if (alive) onStatus("delayed"); };
-          socket.onmessage = (event) => {
-            if (!alive || !seriesRef.current) return;
-            try {
-              const packet = JSON.parse(event.data);
-              const k = packet.k;
-              if (!k) return;
-              const candle = { time: Math.floor(Number(k.t) / 1000) as UTCTimestamp, open: Number(k.o), high: Number(k.h), low: Number(k.l), close: Number(k.c) };
-              if (![candle.time,candle.open,candle.high,candle.low,candle.close].every(Number.isFinite)) return;
-              seriesRef.current.update(candle);
-              onStatus("live");
-              onDetails({ latest: candle.close, low: candle.low, high: candle.high, updatedAt: new Date().toISOString() });
-            } catch { /* Ignore malformed stream frames. */ }
-          };
-        } catch { /* Historical data remains usable without the live socket. */ }
-      }
+          const packet = JSON.parse(event.data);
+          if (packet.type === "error") { setMessage(packet.message || "Live feed unavailable."); return; }
+          if (packet.type !== "tick") return;
+          const price = Number(packet.price);
+          const tickSeconds = Number(packet.time);
+          if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(tickSeconds)) return;
+          const bucket = Math.floor(tickSeconds / intervals[period]) * intervals[period];
+          const time = bucket as UTCTimestamp;
+          if (!liveCandle || liveCandle.time !== time) {
+            liveCandle = { time, open: price, high: price, low: price, close: price };
+          } else {
+            liveCandle = { ...liveCandle, high: Math.max(liveCandle.high, price), low: Math.min(liveCandle.low, price), close: price };
+          }
+          seriesRef.current.update(liveCandle);
+          onStatus("live");
+          onDetails({ latest: price, low: liveCandle.low, high: liveCandle.high, updatedAt: new Date(tickSeconds * 1000).toISOString() });
+          setMessage("");
+        } catch { /* Ignore malformed frames. */ }
+      };
+      socket.onerror = () => { if (alive) onStatus("delayed"); };
+      socket.onclose = () => { if (alive) onStatus("delayed"); };
     };
 
     void start();
@@ -102,7 +101,6 @@ export default function MarketCandlestickChart({ symbol, period, onStatus, onDet
       socket?.close();
       resizeObserver?.disconnect();
       chart?.remove();
-      chartRef.current = null;
       seriesRef.current = null;
     };
   }, [symbol, period, onStatus, onDetails]);
