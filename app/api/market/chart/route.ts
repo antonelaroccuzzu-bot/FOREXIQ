@@ -38,6 +38,21 @@ async function getJson(url: string) {
   return response.json();
 }
 
+async function bybitCandles(symbol: string, period: keyof typeof PERIODS) {
+  const config = PERIODS[period];
+  const interval = period === "1D" ? "1" : period === "1W" ? "15" : period === "1M" ? "60" : "D";
+  const url = `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=${interval}&limit=${config.limit}`;
+  const payload = await getJson(url);
+  if (payload?.retCode !== 0 || !Array.isArray(payload?.result?.list)) throw new Error("Bybit candle history unavailable");
+  const candles = payload.result.list.map((row: string[]) => ({
+    time: Number(row[0]), open: Number(row[1]), high: Number(row[2]), low: Number(row[3]), close: Number(row[4]),
+  })).filter((c: {time:number;open:number;high:number;low:number;close:number}) =>
+    [c.time,c.open,c.high,c.low,c.close].every(Number.isFinite) && c.open>0 && c.high>0 && c.low>0 && c.close>0
+  ).sort((a: {time:number}, b: {time:number}) => a.time-b.time);
+  if (!candles.length) throw new Error("No Bybit candles returned");
+  return candles;
+}
+
 async function yahooCandles(symbol: string, period: keyof typeof PERIODS) {
   const config = PERIODS[period];
   let payload: any;
@@ -80,6 +95,13 @@ export async function GET(request: NextRequest) {
         if (candles.length) return NextResponse.json({ symbol, period, candles, sourceStatus: "delayed", updatedAt: new Date().toISOString() }, { headers });
       } catch { /* Try the mirror, then delayed historical data. */ }
     }
+  }
+
+  if (instrument.crypto) {
+    try {
+      const candles = await bybitCandles(instrument.crypto, period);
+      return NextResponse.json({ symbol, period, candles, sourceStatus: "delayed", updatedAt: new Date().toISOString() }, { headers });
+    } catch { /* Continue to the general historical reference source. */ }
   }
 
   try {
