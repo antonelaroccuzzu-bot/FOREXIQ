@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
         const candles = rows.map((r) => ({
           time: Number(r[0]), open: Number(r[1]), high: Number(r[2]), low: Number(r[3]), close: Number(r[4]),
         })).filter((c) => [c.time,c.open,c.high,c.low,c.close].every(Number.isFinite) && c.open>0 && c.high>0 && c.low>0 && c.close>0);
-        if (candles.length) return NextResponse.json({ symbol, period, candles, sourceStatus: "live", updatedAt: new Date().toISOString() }, { headers });
+        if (candles.length) return NextResponse.json({ symbol, period, candles, sourceStatus: "delayed", updatedAt: new Date().toISOString() }, { headers });
       } catch { /* Try the mirror, then delayed historical data. */ }
     }
   }
