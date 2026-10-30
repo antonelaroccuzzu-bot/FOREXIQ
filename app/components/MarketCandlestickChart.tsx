@@ -68,31 +68,40 @@ export default function MarketCandlestickChart({ symbol, period, onStatus, onDet
         return;
       }
 
-      socket = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/market/stream?symbol=${encodeURIComponent(symbol)}`);
-      socket.onmessage = (event) => {
-        if (!alive || !seriesRef.current) return;
-        try {
-          const packet = JSON.parse(event.data);
-          if (packet.type === "error") { setMessage(packet.message || "Live feed unavailable."); return; }
-          if (packet.type !== "tick") return;
-          const price = Number(packet.price);
-          const rawTime = Number(packet.time);\n          const tickSeconds = rawTime > 1e12 ? rawTime / 1000 : rawTime;
-          if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(tickSeconds)) return;
-          const bucket = Math.floor(tickSeconds / intervals[period]) * intervals[period];
-          const time = bucket as UTCTimestamp;
-          if (!liveCandle || liveCandle.time !== time) {
-            liveCandle = { time, open: price, high: price, low: price, close: price };
-          } else {
-            liveCandle = { ...liveCandle, high: Math.max(liveCandle.high, price), low: Math.min(liveCandle.low, price), close: price };
-          }
-          try { seriesRef.current.update(liveCandle); } catch { return; }
-          onStatus("live");
-          onDetails({ latest: price, low: liveCandle.low, high: liveCandle.high, updatedAt: new Date(tickSeconds * 1000).toISOString() });
-          setMessage("");
-        } catch { /* Ignore malformed frames. */ }
-      };
-      socket.onerror = () => { if (alive) onStatus("delayed"); };
-      socket.onclose = () => { if (alive) onStatus("delayed"); };
+      if (symbol.endsWith("/USDT")) {
+        const pair = symbol.replace("/", "");
+        const interval = period === "1D" ? "1" : period === "1W" ? "15" : period === "1M" ? "60" : "D";
+        socket = new WebSocket("wss://stream.bybit.com/v5/public/spot");
+        socket.onopen = () => {
+          socket?.send(JSON.stringify({ op: "subscribe", args: [`kline.${interval}.${pair}`] }));
+          const ping = window.setInterval(() => {
+            if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ op: "ping" }));
+          }, 20000);
+          socket?.addEventListener("close", () => window.clearInterval(ping), { once: true });
+        };
+        socket.onmessage = (event) => {
+          if (!alive || !seriesRef.current) return;
+          try {
+            const packet = JSON.parse(event.data);
+            if (packet.op === "ping") return;
+            const row = Array.isArray(packet.data) ? packet.data[0] : null;
+            if (!row || !String(packet.topic || "").startsWith("kline.")) return;
+            const startMs = Number(row.start);
+            const time = Math.floor(startMs / 1000) as UTCTimestamp;
+            const candle = { time, open: Number(row.open), high: Number(row.high), low: Number(row.low), close: Number(row.close) };
+            if (!Number.isFinite(time) || ![candle.open,candle.high,candle.low,candle.close].every(v => Number.isFinite(v) && v > 0)) return;
+            try { seriesRef.current.update(candle); } catch { return; }
+            liveCandle = { ...candle, high: Math.max(candle.high, liveCandle?.high ?? candle.high), low: Math.min(candle.low, liveCandle?.low ?? candle.low) };
+            onStatus("live");
+            onDetails({ latest: candle.close, low: liveCandle.low, high: liveCandle.high, updatedAt: new Date(startMs).toISOString() });
+            setMessage("");
+          } catch { /* Ignore malformed exchange messages. */ }
+        };
+        socket.onerror = () => { if (alive) onStatus("delayed"); };
+        socket.onclose = () => { if (alive) onStatus("delayed"); };
+      } else {
+        onStatus("delayed");
+      }
     };
 
     void start();
