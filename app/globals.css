@@ -31,3 +31,21 @@
 .chart-overlay-message{position:absolute;inset:0;display:grid;place-items:center;background:#0b141bcc;color:#93a5ae;font-size:11px;pointer-events:none}
 .chart-live-caption{position:absolute;left:12px;bottom:8px;padding:4px 7px;background:#0b141bd9;border:1px solid #263640;border-radius:4px;color:#81949e;font-size:8px;pointer-events:none}
 @media(max-width:700px){.candlestick-chart-wrap{height:300px}.chart-live-caption{font-size:7px;left:7px;bottom:6px}}
+
+.director-panel{display:flex;flex-direction:column;min-height:330px}
+.director-messages{display:flex;flex-direction:column;gap:10px;max-height:340px;overflow:auto;min-height:110px}
+.director-message{border:1px solid var(--line);background:#0a1119;border-radius:7px;padding:10px 11px}
+.director-message.user{border-color:#23483f;background:#0e1d1b}
+.director-message strong{font-size:8px;letter-spacing:1px;color:var(--green)}
+.director-message p{white-space:pre-wrap;line-height:1.65;font-size:10px;color:#c0cbd1;margin:6px 0 0}
+.director-message.assistant strong{color:#9bbcff}
+.director-loading{display:flex;align-items:center;gap:7px;color:#9bbcff;font-size:10px;padding:5px}
+.director-loading svg{animation:director-spin 1s linear infinite}
+@keyframes director-spin{to{transform:rotate(360deg)}}
+.director-error{font-size:10px;color:#f0a0a6;margin:0}
+.director-form{display:flex;gap:8px;margin-top:13px}
+.director-form input{flex:1;min-width:0;background:#0a1119;border:1px solid #263640;border-radius:6px;color:var(--text);padding:10px 11px;font-size:10px;outline:none}
+.director-form input:focus{border-color:#347c69}
+.director-form button{width:38px;border:0;border-radius:6px;background:#17483d;color:#61e3b6;display:grid;place-items:center}
+.director-form button:disabled{opacity:.45;cursor:not-allowed}
+.director-foot{font-size:8px;color:#71848f;margin-top:9px}
