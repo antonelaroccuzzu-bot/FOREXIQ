@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowDownToLine, ArrowUpRight, Bell, Check, ChevronDown, ChevronRight, CircleHelp, Copy, History, LayoutDashboard, Menu, Search, ShieldCheck, Wallet, X } from "lucide-react";
 import { DEPOSIT_ASSETS } from "@/lib/deposit-assets";
 
+const MERCURYO_URL = "https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2&widget_flow=swap";
+
 const coinMeta: Record<string, { color: string; mark: string; description: string }> = {
   BTC: { color: "#f7931a", mark: "₿", description: "Bitcoin" },
   USDT: { color: "#26a17b", mark: "₮", description: "Tether" },
@@ -109,7 +111,7 @@ export default function Home() {
 
           <section className="section-block deposit-section" id="deposit">
             <div className="section-heading"><div><h2>Deposit crypto</h2><p>Choose a coin and its supported network to view deposit details.</p></div><span className="section-tag">{DEPOSIT_ASSETS.length} NETWORK ROUTES</span></div>
-            <div className="deposit-tabs"><button className={tab === "deposit" ? "deposit-tab active-tab" : "deposit-tab"} onClick={() => setTab("deposit")}>On-chain deposit</button><button className="deposit-tab" disabled>Buy crypto <span>Coming soon</span></button></div>
+            <div className="deposit-tabs"><button className={tab === "deposit" ? "deposit-tab active-tab" : "deposit-tab"} onClick={() => setTab("deposit")}>On-chain deposit</button><a className="deposit-tab" href={MERCURYO_URL} target="_blank" rel="noopener noreferrer">Buy crypto <span>Mercuryo</span></a></div>
             <div className="deposit-columns">
               <div className="coin-picker">
                 <div className="picker-title">Select coin</div>
