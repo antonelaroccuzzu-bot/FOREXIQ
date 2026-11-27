@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FOREXIQ — Trade Smarter. See Further.",
-  description: "AI-assisted market research, risk awareness and trading tools for forex and crypto traders.",
+  title: "0KX — Digital Asset Investments",
+  description: "0KX digital asset investment workspace. Review supported crypto deposit networks and manage investment activity.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

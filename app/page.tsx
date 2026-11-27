@@ -1,147 +1,148 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import MarketCandlestickChart from "./components/MarketCandlestickChart";
-import TradingDirector from "./components/TradingDirector";
-import DemoTrading from "./components/DemoTrading";
-import { Activity, ArrowDownRight, ArrowUpRight, Bell, BrainCircuit, ChevronDown, CircleHelp, LayoutDashboard, LineChart, Menu, Search, ShieldCheck, Sparkles, WalletCards, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowDownToLine, ArrowUpRight, Bell, Check, ChevronDown, ChevronRight, CircleHelp, Copy, History, LayoutDashboard, Menu, Search, ShieldCheck, Wallet, X } from "lucide-react";
+import { DEPOSIT_ASSETS } from "@/lib/deposit-assets";
 
-type Group = "FOREX" | "METALS" | "ENERGY" | "INDICES" | "CRYPTO";
-type Quote = { symbol: string; name: string; group: Group; price: string; change: string | null; up: boolean | null; currency: string; status: "live" | "delayed" | "unavailable"; updatedAt: string | null };
-const categories = ["ALL", "FOREX", "METALS", "ENERGY", "INDICES", "CRYPTO"] as const;
-const nav = [{ label: "Overview", icon: LayoutDashboard }, { label: "Markets", icon: LineChart }, { label: "AI Research", icon: BrainCircuit }, { label: "Risk Center", icon: ShieldCheck }, { label: "Portfolio", icon: WalletCards }];
+const MERCURYO_URL = "https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2&widget_flow=swap";
+
+const coinMeta: Record<string, { color: string; mark: string; description: string }> = {
+  BTC: { color: "#f7931a", mark: "₿", description: "Bitcoin" },
+  USDT: { color: "#26a17b", mark: "₮", description: "Tether" },
+  ETH: { color: "#7c83db", mark: "◆", description: "Ethereum" },
+};
 
 export default function Home() {
-  const [active, setActive] = useState("Overview");
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<(typeof categories)[number]>("ALL");
-  const [notice, setNotice] = useState("");
-  const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [feedStatus, setFeedStatus] = useState<"connecting" | "live" | "partial" | "offline">("connecting");
-  const [updatedAt, setUpdatedAt] = useState("");
-  const [aiStatus, setAiStatus] = useState<"checking" | "connected" | "unavailable">("checking");
-  const [chartSymbol, setChartSymbol] = useState("BTC/USDT");
-  const [chartPeriod, setChartPeriod] = useState<"1D" | "1W" | "1M" | "1Y">("1D");
-  const [chartStatus, setChartStatus] = useState<"loading" | "live" | "delayed" | "error">("loading");
-  const [chartDetails, setChartDetails] = useState({ latest: 0, low: 0, high: 0, updatedAt: "" });
-  const chartPeriods = ["1D", "1W", "1M", "1Y"] as const;
-  const handleChartStatus = useCallback((status: "loading" | "live" | "delayed" | "error") => setChartStatus(status), []);
-  const handleChartDetails = useCallback((details: { latest: number; low: number; high: number; updatedAt: string }) => setChartDetails(details), []);
+  const [assetId, setAssetId] = useState(DEPOSIT_ASSETS[0].id);
+  const [amount, setAmount] = useState("");
+  const [txHash, setTxHash] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [duration, setDuration] = useState("30");
+  const [customDays, setCustomDays] = useState("");
+  const [search, setSearch] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [tab, setTab] = useState("deposit");
+  const [walletVisible, setWalletVisible] = useState(false);
+  const [countdown, setCountdown] = useState(5);
+  const [principal, setPrincipal] = useState("");
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const selected = useMemo(() => DEPOSIT_ASSETS.find((a) => a.id === assetId) ?? DEPOSIT_ASSETS[0], [assetId]);
+  const filteredAssets = DEPOSIT_ASSETS.filter((a) => (a.symbol + " " + a.name + " " + a.network).toLowerCase().includes(search.toLowerCase()));
+  const meta = coinMeta[selected.symbol] ?? { color: "#777", mark: selected.symbol.slice(0, 1), description: selected.name };
+  const durationDays = duration === "custom" ? Math.max(0, Number(customDays) || 0) : Number(duration);
+  const maturityDate = useMemo(() => {
+    if (!startDate || !durationDays) return "";
+    const date = new Date(startDate + "T12:00:00");
+    date.setDate(date.getDate() + durationDays);
+    return date.toISOString().slice(0, 10);
+  }, [startDate, durationDays]);
   useEffect(() => {
-    let activeRequest = true;
-    fetch("/api/ai/research", { cache: "no-store" }).then(async response => { const data = await response.json(); if (activeRequest) setAiStatus(response.ok && data.connected ? "connected" : "unavailable"); }).catch(() => { if (activeRequest) setAiStatus("unavailable"); });
-    let timer: ReturnType<typeof setInterval> | undefined;
-    const load = async () => {
-      try {
-        const response = await fetch("/api/market/overview", { cache: "no-store" });
-        if (!response.ok) throw new Error("Market feed unavailable");
-        const data = await response.json();
-        if (!activeRequest) return;
-        setQuotes(data.quotes ?? []);
-        setUpdatedAt(data.updatedAt ?? "");
-        setFeedStatus(data.liveCount === data.totalCount ? "live" : data.availableCount > 0 ? "partial" : "offline");
-      } catch { if (activeRequest) setFeedStatus("offline"); }
-    };
-    load();
-    timer = setInterval(load, 30000);
-    return () => { activeRequest = false; if (timer) clearInterval(timer); };
-  }, []);
-  useEffect(() => {
-    let stopped = false;
-    let socket: WebSocket | null = null;
-    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
-    let pingTimer: ReturnType<typeof setInterval> | undefined;
-    const cryptoSymbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT"];
-    const connect = () => {
-      if (stopped) return;
-      socket = new WebSocket("wss://stream.bybit.com/v5/public/spot");
-      socket.onopen = () => {
-        socket?.send(JSON.stringify({ op: "subscribe", args: cryptoSymbols.map(symbol => "tickers." + symbol) }));
-        pingTimer = setInterval(() => { if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ op: "ping" })); }, 20000);
-      };
-      socket.onmessage = event => {
-        if (stopped) return;
-        try {
-          const packet = JSON.parse(event.data);
-          const data = packet?.data;
-          const pair = String(packet?.topic || "").replace("tickers.", "");
-          const symbols: Record<string, string> = { BTCUSDT: "BTC/USDT", ETHUSDT: "ETH/USDT", SOLUSDT: "SOL/USDT", BNBUSDT: "BNB/USDT", XRPUSDT: "XRP/USDT", ADAUSDT: "ADA/USDT", DOGEUSDT: "DOGE/USDT" };
-          const instrument = symbols[pair];
-          const price = Number(data?.lastPrice);
-          if (!instrument || !Number.isFinite(price) || price <= 0) return;
-          const pct = Number(data?.price24hPcnt) * 100;
-          setQuotes(current => current.map(q => q.symbol === instrument ? {
-            ...q,
-            price: price.toLocaleString("en-US", { maximumFractionDigits: 8 }),
-            change: Number.isFinite(pct) ? (pct >= 0 ? "+" : "") + pct.toFixed(2) + "%" : q.change,
-            up: Number.isFinite(pct) ? pct >= 0 : q.up,
-            currency: "USDT",
-            updatedAt: new Date().toISOString(),
-            status: "live",
-          } : q));
-        } catch { /* Ignore malformed public exchange messages. */ }
-      };
-      socket.onclose = () => {
-        if (pingTimer) clearInterval(pingTimer);
-        if (stopped) return;
-        setQuotes(current => current.map(q => q.group === "CRYPTO" ? { ...q, status: "delayed" } : q));
-        reconnectTimer = setTimeout(connect, 5000);
-      };
-      socket.onerror = () => socket?.close();
-    };
-    connect();
-    return () => {
-      stopped = true;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (pingTimer) clearInterval(pingTimer);
-      socket?.close();
-    };
-  }, []);
-  const filtered = useMemo(() => quotes.filter((item) =>
-    (category === "ALL" || item.group === category) &&
-    (item.symbol + " " + item.name).toLowerCase().includes(query.toLowerCase())
-  ), [quotes, category, query]);
-  const receivedCount = quotes.filter((q) => q.status === "live" || q.status === "delayed").length;
-  const liveCount = quotes.filter((q) => q.status === "live").length;
-  const delayedCount = quotes.filter((q) => q.status === "delayed").length;
-  const statusLabel = feedStatus === "live" ? "ALL FEEDS LIVE" : feedStatus === "partial" ? "MIXED MARKET DATA" : feedStatus === "offline" ? "MARKET FEED OFFLINE" : "CONNECTING MARKET FEED";
-  return <main className="shell">
-    <aside className={"sidebar " + (mobileOpen ? "sidebar-open" : "")}>
-      <div className="brand"><div className="brand-mark">F</div><div><strong>FOREX<span>IQ</span></strong><small>INTELLIGENCE TERMINAL</small></div><button className="mobile-close" onClick={() => setMobileOpen(false)} aria-label="Close menu"><X size={18}/></button></div>
-      <div className="workspace-label">WORKSPACE</div>
-      <nav>{nav.map(({label,icon:Icon}) => <button key={label} className={"nav-item " + (active===label?"nav-active":"")} onClick={() => {setActive(label);setMobileOpen(false);}}><Icon size={18}/><span>{label}</span>{label==="AI Research"&&<i className="new-dot"/>}</button>)}</nav>
-      <div className="sidebar-bottom"><div className="upgrade-card"><div className="upgrade-icon"><Sparkles size={17}/></div><strong>Sharper decisions start here.</strong><p>AI tools and market context in one workspace.</p><button onClick={() => setNotice("AI plans and billing will be enabled after account and subscription setup.")}>Explore plans <ArrowUpRight size={14}/></button></div><button className="nav-item" onClick={() => setNotice("Support centre is being prepared.")}><CircleHelp size={18}/><span>Help & support</span></button><div className="profile"><div className="avatar">V</div><div><strong>Trader account</strong><small>Preview workspace</small></div><ChevronDown size={16}/></div></div>
-    </aside>
-    {mobileOpen&&<button className="scrim" onClick={()=>setMobileOpen(false)} aria-label="Close navigation"/>}
-    <section className="main-area">
-      <header className="topbar"><div className="top-left"><button className="menu-button" onClick={()=>setMobileOpen(true)} aria-label="Open menu"><Menu size={20}/></button><span className="breadcrumb">Workspace</span><span className="crumb-sep">/</span><strong>{active}</strong></div><div className="top-actions"><div className={"status " + (feedStatus === "live" ? "status-live" : "")}><span/> {statusLabel}</div><button className="icon-button" aria-label="Notifications" onClick={()=>setNotice("You are all caught up.")}><Bell size={18}/></button><div className="avatar small-avatar">V</div></div></header>
-      <div className="content">
-        <div className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-line"/> GLOBAL MARKET INTELLIGENCE</div><h1>{active==="Overview"?"One terminal. Multiple markets.":active}</h1><p className="subheading">Monitor forex, precious metals, energy, global indices and digital assets.</p></div></div>
-        <div className="preview-banner"><div className="preview-symbol"><Activity size={18}/></div><div><strong>Market data connection</strong><p>All market categories are requested together and the board refreshes every 30 seconds. LIVE means a verified streaming feed; REFERENCE means an indicative quote without a verified stream. Prices are not executable broker prices. Trading is not enabled.</p></div><span className="preview-pill">{receivedCount} / {quotes.length || 23} QUOTES RECEIVED</span></div>
-        <section className="panel live-chart-panel">
-          <div className="panel-head"><div><h3>Live market chart</h3><p>{chartSymbol} · live exchange stream where available</p></div><span className={"quote-status " + (chartStatus === "error" ? "unavailable" : chartStatus === "delayed" ? "reference" : "live")}>{chartStatus === "loading" ? "LOADING" : chartStatus === "error" ? "DATA UNAVAILABLE" : chartStatus === "live" ? "LIVE FEED" : "REFERENCE DATA"}</span></div>
-          <div className="live-chart-controls"><select aria-label="Chart instrument" value={chartSymbol} onChange={e=>setChartSymbol(e.target.value)}>{quotes.map(q=><option key={q.symbol} value={q.symbol}>{q.symbol} — {q.name}</option>)}</select><div className="periods" aria-label="Chart timeframe">{chartPeriods.map(p=><button key={p} className={chartPeriod===p?"period-active":""} onClick={()=>setChartPeriod(p)}>{p}</button>)}</div></div>
-          <div className="live-chart-summary"><strong>{chartDetails.latest ? chartDetails.latest.toLocaleString("en-US",{maximumFractionDigits: chartSymbol.includes("JPY")?3:5}) : "—"}</strong><span>{chartStatus==="live"?"Live exchange candle stream":chartStatus==="delayed"?"Historical reference candles":chartStatus==="error"?"Waiting for market data":"Connecting to market data…"}</span></div>
-          <MarketCandlestickChart symbol={chartSymbol} period={chartPeriod} onStatus={handleChartStatus} onDetails={handleChartDetails}/>
-          <div className="live-chart-footer"><span>LOW {chartDetails.low ? chartDetails.low.toLocaleString("en-US",{maximumFractionDigits:5}) : "—"}</span><span>{chartDetails.updatedAt ? "Updated "+new Date(chartDetails.updatedAt).toLocaleTimeString("en-US") : "Connecting…"}</span><span>HIGH {chartDetails.high ? chartDetails.high.toLocaleString("en-US",{maximumFractionDigits:5}) : "—"}</span></div><p className="chart-disclaimer">A chart is marked LIVE only after a verified streaming tick arrives. Historical candles are reference data. This chart does not execute trades.</p>
-        </section>
-        <div className="section-heading"><div><h2>Global markets</h2><p>Streaming and reference quotes across asset classes</p></div><span className="market-count">{receivedCount} quotes received</span></div>
-        <div className="stat-grid"><article className="stat-card"><div className="stat-top"><span>Live feeds</span><Activity size={17}/></div><div className="stat-value">{String(liveCount).padStart(2,"0")} <small>/ {quotes.length || 23} instruments</small></div><div className="stat-foot"><span className="green-dot"/>{liveCount} live · {delayedCount} reference</div></article><article className="stat-card"><div className="stat-top"><span>Asset classes</span><LineChart size={17}/></div><div className="stat-value">05 <small>markets</small></div><div className="stat-foot"><span className="neutral-dot"/> FX · metals · energy · indices · crypto</div></article><article className="stat-card"><div className="stat-top"><span>AI research</span><BrainCircuit size={17}/></div><div className="stat-value">{aiStatus === "checking" ? "Checking…" : aiStatus === "connected" ? "Connected" : "Unavailable"}</div><div className="stat-foot"><span className={aiStatus === "connected" ? "green-dot" : "neutral-dot"}/>{aiStatus === "connected" ? "OpenRouter API verified" : aiStatus === "checking" ? "Checking provider access" : "Provider key or access needs attention"}</div></article></div>
-        <DemoTrading quotes={quotes.map(({symbol,price,status})=>({symbol,price,status}))}/>
-        <section className="panel market-panel full-market-panel">
-          <div className="panel-head"><div><h3>Market watch</h3><p>Search and filter instruments across global markets</p></div><span className="feed-refresh">{updatedAt ? "Updated " + new Date(updatedAt).toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit"}) : "Awaiting first quote"}</span></div>
-          <div className="market-controls"><div className="search-wrap"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search gold, EUR/USD, Bitcoin..."/></div><div className="market-tabs">{categories.map((item)=><button key={item} className={category===item?"market-tab-active":""} onClick={()=>setCategory(item)}>{item}</button>)}</div></div>
-          <div className="market-table"><div className="table-head market-table-head"><span>INSTRUMENT</span><span>MARKET</span><span>LAST PRICE</span><span>24H CHANGE</span><span>STATUS</span></div>
-            {filtered.map(item=><div className="market-row market-row-wide" key={item.symbol}><div className="instrument"><div className="coin-icon">{item.group==="METALS"?"Au":item.group==="ENERGY"?"O":item.group==="INDICES"?"#":item.group==="CRYPTO"?"₿":item.symbol.slice(0,1)}</div><div><strong>{item.symbol}</strong><small>{item.name}</small></div></div><span className="market-type">{item.group}</span><strong className="price">{item.price}{item.status==="live"&&item.currency!=="—"?<small> {item.currency}</small>:null}</strong><span className={"change " + (item.up===null?"neutral-change":item.up?"positive":"negative")}>{item.change===null?"—":<>{item.up?<ArrowUpRight size={14}/>:<ArrowDownRight size={14}/>} {item.change}</>}</span><span className={"quote-status " + item.status}>{item.status==="live"?"LIVE":item.status==="delayed"?"REFERENCE":"UNAVAILABLE"}</span></div>)}
-            {filtered.length===0&&<div className="empty-state">No instruments match that search.</div>}
-          </div>
-          <div className="panel-foot">Prices are indicative reference quotes, not executable bid/ask prices. FX, metals, energy and index prices are reference quotes unless marked LIVE; crypto pairs are quoted in USDT.</div>
-        </section>
-        <div className="bottom-grid"><TradingDirector quotes={quotes.map(({symbol,price,change,status})=>({symbol,price,change,status}))} aiStatus={aiStatus}/><section className="panel security-panel"><div className="panel-head"><div><h3>Trading readiness</h3><p>Live execution remains disabled</p></div><ShieldCheck size={19}/></div><div className="check-row"><span className="check-pending"/> User accounts <small>Not configured</small></div><div className="check-row"><span className="check-pending"/> Broker / exchange connection <small>Not configured</small></div><div className="check-row"><span className="check-pending"/> Order execution <small>Disabled</small></div><div className="check-row"><span className="check-pending"/> Risk limits & audit logs <small>Required</small></div></section></div>
-        <footer><span>© 2026 FOREXIQ</span><span>Trade Smarter. See Further.</span><span>Trading involves risk. Some quotes are reference data. AI insights are not financial advice.</span></footer>
-        {notice&&<div className="toast" role="status">{notice}<button onClick={()=>setNotice("")} aria-label="Dismiss"><X size={15}/></button></div>}
+    setWalletVisible(false);
+    setCountdown(5);
+    const timer = window.setInterval(() => {
+      setCountdown((value) => {
+        if (value <= 1) {
+          window.clearInterval(timer);
+          setWalletVisible(true);
+          return 0;
+        }
+        return value - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [assetId]);
+
+  async function copyAddress() {
+    try {
+      await navigator.clipboard.writeText(selected.address);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch { setCopied(false); }
+  }
+
+  return (
+    <main className="okx-shell">
+      <aside className={menuOpen ? "sidebar sidebar-open" : "sidebar"}>
+        <a className="brand" href="#"><span className="brand-mark">0</span><span>0KX</span></a>
+        <div className="nav-caption">MENU</div>
+        <nav className="side-nav">
+          <a href="#overview" className="side-link active"><LayoutDashboard size={18}/> Overview</a>
+          <a href="#investment" className="side-link"><ArrowUpRight size={18}/> Investments</a>
+          <a href="#deposit" className="side-link"><ArrowDownToLine size={18}/> Deposit</a>
+          <a href="#activity" className="side-link"><History size={18}/> Transaction history</a>
+        </nav>
+        <div className="sidebar-foot"><div className="security-card"><ShieldCheck size={19}/><strong>Security reminder</strong><p>Always check the coin and network before making a transfer.</p></div><span>0KX DIGITAL ASSET PLATFORM</span></div>
+        <button className="close-menu" onClick={() => setMenuOpen(false)} aria-label="Close menu"><X size={20}/></button>
+      </aside>
+
+      <div className="main-area">
+        <header className="topbar">
+          <button className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open menu"><Menu size={22}/></button>
+          <a className="mobile-brand" href="#">0KX</a>
+          <div className="top-nav"><a href="#overview">Dashboard</a><a href="#investment">Invest</a><a href="#deposit" className="top-active">Deposit</a><a href="#activity">Assets</a></div>
+          <div className="top-actions"><button aria-label="Help"><CircleHelp size={19}/></button><button aria-label="Notifications"><Bell size={19}/></button><div className="profile-avatar">U</div></div>
+        </header>
+
+        <div className="content" id="overview">
+          <div className="page-heading"><div><div className="overline">YOUR INVESTMENT SPACE</div><h1>Welcome to 0KX</h1><p>Manage your digital assets and investment activity.</p></div><div className="account-state"><i/> Account preview <ChevronDown size={15}/></div></div>
+
+          <div className="preview-alert"><ShieldCheck size={19}/><div><strong>Secure deposits</strong><p>Confirm the asset and network before sending. Deposits require blockchain confirmation and account verification.</p></div></div>
+
+          <section className="quick-actions">
+            <a href="#deposit" className="action-card"><span className="action-icon"><Wallet size={21}/></span><span><b>Make a deposit</b><small>View supported assets and networks</small></span><ChevronRight size={20}/></a>
+            <a href="#investment" className="action-card"><span className="action-icon"><ArrowUpRight size={21}/></span><span><b>Explore investments</b><small>Choose an investment duration</small></span><ChevronRight size={20}/></a>
+          </section>
+
+          <section className="section-block" id="investment">
+            <div className="section-heading"><div><h2>Investment duration</h2><p>Select how long you would like an investment to run.</p></div><span className="section-tag">FLEXIBLE TERM</span></div>
+            <div className="duration-row">{["7","14","30","60","90","custom"].map((d) => <button key={d} className={duration === d ? "duration-pill selected" : "duration-pill"} onClick={() => setDuration(d)}>{d === "custom" ? "Custom" : d + " days"}</button>)}</div>
+            {duration === "custom" && <div className="custom-days"><label htmlFor="customDays">Custom duration in days</label><input id="customDays" type="number" min="1" max="3650" placeholder="Enter number of days" value={customDays} onChange={(e) => setCustomDays(e.target.value)}/></div>}
+            <div className="investment-calculator">
+              <div className="calculator-title">Investment calculator</div>
+              <div className="calculator-grid">
+                <label>Investment amount ({selected.symbol})<input inputMode="decimal" type="number" min="0" placeholder="Enter amount" value={principal} onChange={(e) => setPrincipal(e.target.value)} /></label>
+                <label>Start date<input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></label>
+                <div className="date-result"><span>Investment term</span><strong>{durationDays > 0 ? durationDays + " days" : "Choose a duration"}</strong></div>
+                <div className="date-result"><span>Maturity date</span><strong>{maturityDate || "—"}</strong></div>
+              </div>
+              <p className="calculator-note">Profit estimates will appear when 0KX configures the applicable investment rate.</p>
+            </div>
+          </section>
+
+          <section className="section-block deposit-section" id="deposit">
+            <div className="section-heading"><div><h2>Deposit crypto</h2><p>Choose a coin and its supported network to view deposit details.</p></div><span className="section-tag">{DEPOSIT_ASSETS.length} NETWORK ROUTES</span></div>
+            <div className="deposit-tabs"><button className={tab === "deposit" ? "deposit-tab active-tab" : "deposit-tab"} onClick={() => setTab("deposit")}>On-chain deposit</button><a className="deposit-tab" href={MERCURYO_URL} target="_blank" rel="noopener noreferrer">Buy crypto <span>Mercuryo</span></a></div>
+            <div className="deposit-columns">
+              <div className="coin-picker">
+                <div className="picker-title">Select coin</div>
+                <div className="coin-search"><Search size={18}/><input placeholder="Search coin or network" value={search} onChange={(e) => setSearch(e.target.value)}/></div>
+                <div className="coin-list">
+                  {filteredAssets.map((asset) => {
+                    const m = coinMeta[asset.symbol] ?? { color: "#888", mark: asset.symbol.slice(0,1) };
+                    return <button key={asset.id} className={asset.id === assetId ? "coin-row coin-selected" : "coin-row"} onClick={() => { setAssetId(asset.id); setCopied(false); }}>
+                      <span className="coin-logo" style={{ background: m.color }}>{m.mark}</span><span className="coin-info"><b>{asset.symbol}</b><small>{asset.network}</small></span>{asset.id === assetId && <Check size={18} className="coin-check"/>}
+                    </button>;
+                  })}
+                  {filteredAssets.length === 0 && <div className="no-results">No matching coin or network.</div>}
+                </div>
+              </div>
+
+              <div className="deposit-details">
+                <div className="selected-coin-heading"><span className="coin-logo large-logo" style={{ background: meta.color }}>{meta.mark}</span><div><h3>{selected.symbol} deposit</h3><p>{selected.name}</p></div></div>
+                <div className="network-line"><span>Network</span><strong>{selected.network}</strong></div>
+                <div className="address-label">Deposit address <span>Only send {selected.symbol} using this network</span></div>
+                {walletVisible ? <div className="address-panel"><code>{selected.address}</code><button onClick={copyAddress} aria-label="Copy address">{copied ? <Check size={19}/> : <Copy size={19}/>}</button></div> : <div className="address-reveal"><span className="reveal-spinner"/><strong>Preparing deposit address</strong><b>{countdown}s</b></div>}
+                <div className={copied ? "copy-status copied" : "copy-status"}>{copied ? "Address copied to clipboard" : walletVisible ? "Copy the complete address exactly as shown." : "Your address will appear shortly."}</div>
+                <div className="chain-warning"><span className="warning-icon">!</span><div><strong>Network warning</strong><p>{selected.warning} Sending assets through another network may result in permanent loss.</p></div></div>
+                <div className="deposit-fields"><label htmlFor="amount">Amount sent ({selected.symbol})</label><input id="amount" inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)}/><label htmlFor="txhash">Transaction ID / TXID</label><input id="txhash" placeholder="Enter transaction hash" value={txHash} onChange={(e) => setTxHash(e.target.value)}/><button className="verify-button" disabled>Submit for verification <ChevronRight size={18}/></button></div>
+              </div>
+            </div>
+          </section>
+
+          <section className="section-block activity-section" id="activity"><div className="section-heading"><div><h2>Recent activity</h2><p>Your latest deposits and investment records will appear here.</p></div><a href="#activity">View all <ChevronRight size={15}/></a></div><div className="empty-state"><History size={26}/><b>No transactions yet</b><span>Your activity will appear here when account services are connected.</span></div></section>
+          <footer><span>© 2026 0KX</span><span>Digital asset investments involve risk. Capital is not guaranteed.</span></footer>
+        </div>
       </div>
-    </section>
-  </main>;
+    </main>
+  );
 }
