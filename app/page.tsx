@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowDownToLine, ArrowUpRight, Bell, Check, ChevronDown, ChevronRight, CircleHelp, Copy, History, LayoutDashboard, Menu, Search, ShieldCheck, Wallet, X } from "lucide-react";
 import { DEPOSIT_ASSETS } from "@/lib/deposit-assets";
 
@@ -20,9 +20,35 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [tab, setTab] = useState("deposit");
+  const [walletVisible, setWalletVisible] = useState(false);
+  const [countdown, setCountdown] = useState(5);
+  const [principal, setPrincipal] = useState("");
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
   const selected = useMemo(() => DEPOSIT_ASSETS.find((a) => a.id === assetId) ?? DEPOSIT_ASSETS[0], [assetId]);
   const filteredAssets = DEPOSIT_ASSETS.filter((a) => (a.symbol + " " + a.name + " " + a.network).toLowerCase().includes(search.toLowerCase()));
   const meta = coinMeta[selected.symbol] ?? { color: "#777", mark: selected.symbol.slice(0, 1), description: selected.name };
+  const durationDays = duration === "custom" ? Math.max(0, Number(customDays) || 0) : Number(duration);
+  const maturityDate = useMemo(() => {
+    if (!startDate || !durationDays) return "";
+    const date = new Date(startDate + "T12:00:00");
+    date.setDate(date.getDate() + durationDays);
+    return date.toISOString().slice(0, 10);
+  }, [startDate, durationDays]);
+  useEffect(() => {
+    setWalletVisible(false);
+    setCountdown(5);
+    const timer = window.setInterval(() => {
+      setCountdown((value) => {
+        if (value <= 1) {
+          window.clearInterval(timer);
+          setWalletVisible(true);
+          return 0;
+        }
+        return value - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [assetId]);
 
   async function copyAddress() {
     try {
@@ -58,7 +84,7 @@ export default function Home() {
         <div className="content" id="overview">
           <div className="page-heading"><div><div className="overline">YOUR INVESTMENT SPACE</div><h1>Welcome to 0KX</h1><p>Manage your digital assets and investment activity.</p></div><div className="account-state"><i/> Account preview <ChevronDown size={15}/></div></div>
 
-          <div className="preview-alert"><ShieldCheck size={19}/><div><strong>Preview environment</strong><p>Deposits and account balances are not connected yet. Do not transfer funds until the deposit verification and account system have been fully tested.</p></div></div>
+          <div className="preview-alert"><ShieldCheck size={19}/><div><strong>Secure deposits</strong><p>Confirm the asset and network before sending. Deposits require blockchain confirmation and account verification.</p></div></div>
 
           <section className="quick-actions">
             <a href="#deposit" className="action-card"><span className="action-icon"><Wallet size={21}/></span><span><b>Make a deposit</b><small>View supported assets and networks</small></span><ChevronRight size={20}/></a>
@@ -69,7 +95,16 @@ export default function Home() {
             <div className="section-heading"><div><h2>Investment duration</h2><p>Select how long you would like an investment to run.</p></div><span className="section-tag">FLEXIBLE TERM</span></div>
             <div className="duration-row">{["7","14","30","60","90","custom"].map((d) => <button key={d} className={duration === d ? "duration-pill selected" : "duration-pill"} onClick={() => setDuration(d)}>{d === "custom" ? "Custom" : d + " days"}</button>)}</div>
             {duration === "custom" && <div className="custom-days"><label htmlFor="customDays">Custom duration in days</label><input id="customDays" type="number" min="1" max="3650" placeholder="Enter number of days" value={customDays} onChange={(e) => setCustomDays(e.target.value)}/></div>}
-            <p className="helper-text">Selecting a duration does not start an investment or guarantee a return. Investment terms and performance calculations must be configured before launch.</p>
+            <div className="investment-calculator">
+              <div className="calculator-title">Investment calculator</div>
+              <div className="calculator-grid">
+                <label>Investment amount ({selected.symbol})<input inputMode="decimal" type="number" min="0" placeholder="Enter amount" value={principal} onChange={(e) => setPrincipal(e.target.value)} /></label>
+                <label>Start date<input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></label>
+                <div className="date-result"><span>Investment term</span><strong>{durationDays > 0 ? durationDays + " days" : "Choose a duration"}</strong></div>
+                <div className="date-result"><span>Maturity date</span><strong>{maturityDate || "—"}</strong></div>
+              </div>
+              <p className="calculator-note">Profit estimates will appear when 0KX configures the applicable investment rate.</p>
+            </div>
           </section>
 
           <section className="section-block deposit-section" id="deposit">
@@ -94,10 +129,10 @@ export default function Home() {
                 <div className="selected-coin-heading"><span className="coin-logo large-logo" style={{ background: meta.color }}>{meta.mark}</span><div><h3>{selected.symbol} deposit</h3><p>{selected.name}</p></div></div>
                 <div className="network-line"><span>Network</span><strong>{selected.network}</strong></div>
                 <div className="address-label">Deposit address <span>Only send {selected.symbol} using this network</span></div>
-                <div className="address-panel"><code>{selected.address}</code><button onClick={copyAddress} aria-label="Copy address">{copied ? <Check size={19}/> : <Copy size={19}/>}</button></div>
-                <div className={copied ? "copy-status copied" : "copy-status"}>{copied ? "Address copied to clipboard" : "Copy the complete address exactly as shown."}</div>
+                {walletVisible ? <div className="address-panel"><code>{selected.address}</code><button onClick={copyAddress} aria-label="Copy address">{copied ? <Check size={19}/> : <Copy size={19}/>}</button></div> : <div className="address-reveal"><span className="reveal-spinner"/><strong>Preparing deposit address</strong><b>{countdown}s</b></div>}
+                <div className={copied ? "copy-status copied" : "copy-status"}>{copied ? "Address copied to clipboard" : walletVisible ? "Copy the complete address exactly as shown." : "Your address will appear shortly."}</div>
                 <div className="chain-warning"><span className="warning-icon">!</span><div><strong>Network warning</strong><p>{selected.warning} Sending assets through another network may result in permanent loss.</p></div></div>
-                <div className="deposit-fields"><label htmlFor="amount">Amount sent ({selected.symbol})</label><input id="amount" inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)}/><label htmlFor="txhash">Transaction ID / TXID</label><input id="txhash" placeholder="Enter transaction hash" value={txHash} onChange={(e) => setTxHash(e.target.value)}/><button className="verify-button" disabled>Submit for verification <ChevronRight size={18}/></button><p className="helper-text">Deposit submission will be enabled after secure account setup. No balance is credited from this preview.</p></div>
+                <div className="deposit-fields"><label htmlFor="amount">Amount sent ({selected.symbol})</label><input id="amount" inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)}/><label htmlFor="txhash">Transaction ID / TXID</label><input id="txhash" placeholder="Enter transaction hash" value={txHash} onChange={(e) => setTxHash(e.target.value)}/><button className="verify-button" disabled>Submit for verification <ChevronRight size={18}/></button></div>
               </div>
             </div>
           </section>
