@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDownToLine, ArrowUpRight, Bell, Check, ChevronDown, ChevronRight, CircleHelp, Clock3, Copy, History, LayoutDashboard, Menu, Search, ShieldCheck, Wallet, X } from "lucide-react";
+import { ArrowDownToLine, ArrowUpRight, Bell, Check, ChevronDown, ChevronRight, CircleHelp, Copy, History, LayoutDashboard, Menu, Search, ShieldCheck, Wallet, X } from "lucide-react";
 import { DEPOSIT_ASSETS } from "@/lib/deposit-assets";
 
 const coinMeta: Record<string, { color: string; mark: string; description: string }> = {
