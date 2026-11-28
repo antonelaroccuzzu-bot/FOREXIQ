@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Activity, ArrowDownToLine, ArrowUpRight, Bell, Check, ChevronDown, ChevronRight, CircleHelp, Copy, History, LayoutDashboard, LogIn, Menu, Search, ShieldCheck, Wallet, X } from "lucide-react";
 import { DEPOSIT_ASSETS } from "@/lib/deposit-assets";
 import AuthPanel from "./components/AuthPanel";
@@ -15,7 +15,11 @@ const coinMeta: Record<string, { color: string; mark: string; description: strin
   ETH: { color: "#7c83db", mark: "◆", description: "Ethereum" },
 };
 
+type AccountSession = { access_token: string; user: { id: string; email?: string } };
+
 export default function Home() {
+  const [activeSession, setActiveSession] = useState<AccountSession | null>(null);
+  const handleAuthChange = useCallback((session: AccountSession | null) => setActiveSession(session), []);
   const [assetId, setAssetId] = useState(DEPOSIT_ASSETS[0].id);
   const [amount, setAmount] = useState("");
   const [txHash, setTxHash] = useState("");
@@ -64,8 +68,8 @@ export default function Home() {
   }
 
   return (
-    <main className="okx-shell">
-      <aside className={menuOpen ? "sidebar sidebar-open" : "sidebar"}>
+    <main className={activeSession ? "okx-shell account-shell" : "okx-shell public-site"}>
+      {activeSession && <aside className={menuOpen ? "sidebar sidebar-open" : "sidebar"}>
         <a className="brand" href="#"><span className="brand-mark">0</span><span>0KX</span></a>
         <div className="nav-caption">MENU</div>
         <nav className="side-nav">
@@ -76,20 +80,20 @@ export default function Home() {
         </nav>
         <div className="sidebar-foot"><div className="security-card"><ShieldCheck size={19}/><strong>Security reminder</strong><p>Always check the coin and network before making a transfer.</p></div><span>0KX DIGITAL ASSET PLATFORM</span></div>
         <button className="close-menu" onClick={() => setMenuOpen(false)} aria-label="Close menu"><X size={20}/></button>
-      </aside>
+      </aside>}
 
       <div className="main-area">
         <header className="topbar">
-          <button className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open menu"><Menu size={22}/></button>
+          {activeSession && <button className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open menu"><Menu size={22}/></button>}
           <a className="mobile-brand" href="#">0KX</a>
-          <div className="top-nav"><a href="#about-0kx">About</a><a href="#crypto-focus">Crypto</a><a href="#investment-plans">Plans</a><a href="#markets">Markets</a><a href="#account">Login</a></div>
-          <div className="top-actions"><button aria-label="Help"><CircleHelp size={19}/></button><button aria-label="Notifications"><Bell size={19}/></button><div className="profile-avatar">U</div></div>
+          <div className="top-nav">{activeSession ? <><a href="#overview">Overview</a><a href="#investment">Investments</a><a href="#deposit">Deposit</a><a href="#markets">Markets</a></> : <><a href="#about-0kx">About</a><a href="#crypto-focus">Crypto</a><a href="#investment-plans">Plans</a><a href="#markets">Markets</a><a href="#account">Login</a></>}</div>
+          <div className="top-actions">{activeSession && <><button aria-label="Help"><CircleHelp size={19}/></button><button aria-label="Notifications"><Bell size={19}/></button><div className="profile-avatar">U</div></>}</div>
         </header>
 
-        <LandingSections />
-        <div className="content dashboard-content" id="account-dashboard">
+        {!activeSession ? <LandingSections onAuthChange={handleAuthChange} /> : <div className="content dashboard-content" id="account-dashboard">
           <div className="page-heading"><div><div className="overline">YOUR INVESTMENT SPACE</div><h1>Welcome to 0KX</h1><p>Manage your digital assets and investment activity.</p></div><div className="account-state"><i/> Account preview <ChevronDown size={15}/></div></div>
 
+          <AuthPanel onAuthChange={handleAuthChange} />
           <div className="preview-alert"><ShieldCheck size={19}/><div><strong>Secure deposits</strong><p>Confirm the asset and network before sending. Deposits require blockchain confirmation and account verification.</p></div></div>
 
 
@@ -147,7 +151,7 @@ export default function Home() {
           <section className="section-block activity-section" id="activity"><div className="section-heading"><div><h2>Recent activity</h2><p>Your latest deposits and investment records will appear here.</p></div><a href="#activity">View all <ChevronRight size={15}/></a></div><div className="empty-state"><History size={26}/><b>No transactions yet</b><span>Your activity will appear here when account services are connected.</span></div></section>
           <footer><span>© 2026 0KX</span><span>Digital asset investments involve risk. Capital is not guaranteed.</span></footer>
           <a className="okx-whatsapp-contact" href="https://wa.me/2348108521685?text=Hello%200KX%20customer%20support" target="_blank" rel="noopener noreferrer" aria-label="Chat with 0KX on WhatsApp"><span>☏</span><b>WhatsApp support</b></a>
-        </div>
+        </div>}
       </div>
     </main>
   );
