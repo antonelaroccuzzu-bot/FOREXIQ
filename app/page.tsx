@@ -146,6 +146,7 @@ export default function Home() {
 
           <section className="section-block activity-section" id="activity"><div className="section-heading"><div><h2>Recent activity</h2><p>Your latest deposits and investment records will appear here.</p></div><a href="#activity">View all <ChevronRight size={15}/></a></div><div className="empty-state"><History size={26}/><b>No transactions yet</b><span>Your activity will appear here when account services are connected.</span></div></section>
           <footer><span>© 2026 0KX</span><span>Digital asset investments involve risk. Capital is not guaranteed.</span></footer>
+          <a className="okx-whatsapp-contact" href="https://wa.me/2348108521685?text=Hello%200KX%20customer%20support" target="_blank" rel="noopener noreferrer" aria-label="Chat with 0KX on WhatsApp"><span>☏</span><b>WhatsApp support</b></a>
         </div>
       </div>
     </main>
