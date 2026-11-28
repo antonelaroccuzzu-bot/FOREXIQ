@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownToLine, ArrowUpRight, Bell, Check, ChevronDown, ChevronRight, CircleHelp, Copy, History, LayoutDashboard, Menu, Search, ShieldCheck, Wallet, X } from "lucide-react";
+import { Activity, ArrowDownToLine, ArrowUpRight, Bell, Check, ChevronDown, ChevronRight, CircleHelp, Copy, History, LayoutDashboard, LogIn, Menu, Search, ShieldCheck, Wallet, X } from "lucide-react";
 import { DEPOSIT_ASSETS } from "@/lib/deposit-assets";
+import AuthPanel from "./components/AuthPanel";
+import LiveMarketBoard from "./components/LiveMarketBoard";
+import LandingSections from "./components/LandingSections";
 
 const MERCURYO_URL = "https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2&widget_flow=swap";
 
@@ -69,7 +72,7 @@ export default function Home() {
           <a href="#overview" className="side-link active"><LayoutDashboard size={18}/> Overview</a>
           <a href="#investment" className="side-link"><ArrowUpRight size={18}/> Investments</a>
           <a href="#deposit" className="side-link"><ArrowDownToLine size={18}/> Deposit</a>
-          <a href="#activity" className="side-link"><History size={18}/> Transaction history</a>
+          <a href="#markets" className="side-link"><Activity size={18}/> Live markets</a><a href="#account" className="side-link"><LogIn size={18}/> Login</a><a href="#activity" className="side-link"><History size={18}/> Transaction history</a>
         </nav>
         <div className="sidebar-foot"><div className="security-card"><ShieldCheck size={19}/><strong>Security reminder</strong><p>Always check the coin and network before making a transfer.</p></div><span>0KX DIGITAL ASSET PLATFORM</span></div>
         <button className="close-menu" onClick={() => setMenuOpen(false)} aria-label="Close menu"><X size={20}/></button>
@@ -79,14 +82,16 @@ export default function Home() {
         <header className="topbar">
           <button className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open menu"><Menu size={22}/></button>
           <a className="mobile-brand" href="#">0KX</a>
-          <div className="top-nav"><a href="#overview">Dashboard</a><a href="#investment">Invest</a><a href="#deposit" className="top-active">Deposit</a><a href="#activity">Assets</a></div>
+          <div className="top-nav"><a href="#about-0kx">About</a><a href="#crypto-focus">Crypto</a><a href="#investment-plans">Plans</a><a href="#markets">Markets</a><a href="#account">Login</a></div>
           <div className="top-actions"><button aria-label="Help"><CircleHelp size={19}/></button><button aria-label="Notifications"><Bell size={19}/></button><div className="profile-avatar">U</div></div>
         </header>
 
-        <div className="content" id="overview">
+        <LandingSections />
+        <div className="content dashboard-content" id="account-dashboard">
           <div className="page-heading"><div><div className="overline">YOUR INVESTMENT SPACE</div><h1>Welcome to 0KX</h1><p>Manage your digital assets and investment activity.</p></div><div className="account-state"><i/> Account preview <ChevronDown size={15}/></div></div>
 
           <div className="preview-alert"><ShieldCheck size={19}/><div><strong>Secure deposits</strong><p>Confirm the asset and network before sending. Deposits require blockchain confirmation and account verification.</p></div></div>
+
 
           <section className="quick-actions">
             <a href="#deposit" className="action-card"><span className="action-icon"><Wallet size={21}/></span><span><b>Make a deposit</b><small>View supported assets and networks</small></span><ChevronRight size={20}/></a>
@@ -141,6 +146,7 @@ export default function Home() {
 
           <section className="section-block activity-section" id="activity"><div className="section-heading"><div><h2>Recent activity</h2><p>Your latest deposits and investment records will appear here.</p></div><a href="#activity">View all <ChevronRight size={15}/></a></div><div className="empty-state"><History size={26}/><b>No transactions yet</b><span>Your activity will appear here when account services are connected.</span></div></section>
           <footer><span>© 2026 0KX</span><span>Digital asset investments involve risk. Capital is not guaranteed.</span></footer>
+          <a className="okx-whatsapp-contact" href="https://wa.me/2348108521685?text=Hello%200KX%20customer%20support" target="_blank" rel="noopener noreferrer" aria-label="Chat with 0KX on WhatsApp"><span>☏</span><b>WhatsApp support</b></a>
         </div>
       </div>
     </main>
