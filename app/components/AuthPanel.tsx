@@ -6,16 +6,16 @@ type Session = { access_token: string; user: { id: string; email?: string } };
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export default function AuthPanel() {
+export default function AuthPanel({ onAuthChange }: { onAuthChange?: (session: Session | null, admin: boolean) => void }) {
   const [email,setEmail]=useState(""); const [password,setPassword]=useState("");
   const [session,setSession]=useState<Session|null>(null); const [admin,setAdmin]=useState(false);
   const [busy,setBusy]=useState(false); const [message,setMessage]=useState("");
   const [mode,setMode]=useState<"login"|"signup">("login");
   const connected=Boolean(URL&&KEY);
-  useEffect(()=>{ try { const raw=localStorage.getItem("okx-session"); if(raw){const s=JSON.parse(raw) as Session; setSession(s); void checkAdmin(s);} } catch {} },[]);
-  async function checkAdmin(s:Session){
-    if(!URL||!KEY)return;
-    try { const r=await fetch(URL+"/rest/v1/okx_admins?user_id=eq."+encodeURIComponent(s.user.id)+"&select=user_id",{headers:{apikey:KEY,Authorization:"Bearer "+s.access_token}}); const d=await r.json(); setAdmin(Array.isArray(d)&&d.length>0); } catch {}
+  useEffect(()=>{ try { const raw=localStorage.getItem("okx-session"); if(raw){const s=JSON.parse(raw) as Session; setSession(s); void checkAdmin(s).then(isAdmin=>onAuthChange?.(s,isAdmin));} else { onAuthChange?.(null,false); } } catch {} },[onAuthChange]);
+  async function checkAdmin(s:Session): Promise<boolean>{
+    if(!URL||!KEY)return false;
+    try { const r=await fetch(URL+"/rest/v1/okx_admins?user_id=eq."+encodeURIComponent(s.user.id)+"&select=user_id",{headers:{apikey:KEY,Authorization:"Bearer "+s.access_token}}); const d=await r.json(); const isAdmin=Array.isArray(d)&&d.length>0; setAdmin(isAdmin); return isAdmin; } catch { return false; }
   }
   async function submit(){
     if(!URL||!KEY){setMessage("Supabase connection is missing. Add the project URL and Publishable (anon) Key to the 0KX Vercel environment variables, then redeploy.");return;}
@@ -27,10 +27,10 @@ export default function AuthPanel() {
       const d=await r.json();
       if(!r.ok)throw new Error(d.msg||d.message||d.error_description||"Authentication failed");
       if(!d.access_token){setMessage("Account created. Check your email to confirm it, then sign in.");setMode("login");return;}
-      const s:Session={access_token:d.access_token,user:d.user};localStorage.setItem("okx-session",JSON.stringify(s));setSession(s);await checkAdmin(s);setPassword("");setMessage("Signed in successfully.");
+      const s:Session={access_token:d.access_token,user:d.user};localStorage.setItem("okx-session",JSON.stringify(s));setSession(s);const isAdmin=await checkAdmin(s);onAuthChange?.(s,isAdmin);setPassword("");setMessage("Signed in successfully.");
     }catch(e){setMessage(e instanceof Error?e.message:"Unable to connect.");}finally{setBusy(false);}
   }
-  async function signOut(){if(URL&&KEY&&session)try{await fetch(URL+"/auth/v1/logout",{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+session.access_token}})}catch{}localStorage.removeItem("okx-session");setSession(null);setAdmin(false);setMessage("You have signed out.");}
+  async function signOut(){if(URL&&KEY&&session)try{await fetch(URL+"/auth/v1/logout",{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+session.access_token}})}catch{}localStorage.removeItem("okx-session");setSession(null);setAdmin(false);onAuthChange?.(null,false);setMessage("You have signed out.");}
   return <section className="section-block auth-section" id="account">
     <div className="section-heading"><div><h2>Account access</h2><p>Sign in to access your personal 0KX account.</p></div>{session&&<span className="section-tag">{admin?"ADMIN ACCOUNT":"SIGNED IN"}</span>}</div>
     {!session&&<div className="auth-mode-switch" aria-label="Choose account action">
