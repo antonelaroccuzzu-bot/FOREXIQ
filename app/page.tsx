@@ -5,6 +5,7 @@ import { Activity, ArrowDownToLine, ArrowUpRight, Bell, Check, ChevronDown, Chev
 import { DEPOSIT_ASSETS } from "@/lib/deposit-assets";
 import AuthPanel from "./components/AuthPanel";
 import LiveMarketBoard from "./components/LiveMarketBoard";
+import LandingSections from "./components/LandingSections";
 
 const MERCURYO_URL = "https://exchange.mercuryo.io/?widget_id=89960d1a-8db7-49e5-8823-4c5e01c1cea2&widget_flow=swap";
 
@@ -81,17 +82,16 @@ export default function Home() {
         <header className="topbar">
           <button className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open menu"><Menu size={22}/></button>
           <a className="mobile-brand" href="#">0KX</a>
-          <div className="top-nav"><a href="#overview">Dashboard</a><a href="#markets">Markets</a><a href="#investment">Invest</a><a href="#deposit" className="top-active">Deposit</a><a href="#account">Login</a></div>
+          <div className="top-nav"><a href="#about-0kx">About</a><a href="#crypto-focus">Crypto</a><a href="#investment-plans">Plans</a><a href="#markets">Markets</a><a href="#account">Login</a></div>
           <div className="top-actions"><button aria-label="Help"><CircleHelp size={19}/></button><button aria-label="Notifications"><Bell size={19}/></button><div className="profile-avatar">U</div></div>
         </header>
 
-        <div className="content" id="overview">
+        <LandingSections />
+        <div className="content dashboard-content" id="account-dashboard">
           <div className="page-heading"><div><div className="overline">YOUR INVESTMENT SPACE</div><h1>Welcome to 0KX</h1><p>Manage your digital assets and investment activity.</p></div><div className="account-state"><i/> Account preview <ChevronDown size={15}/></div></div>
 
           <div className="preview-alert"><ShieldCheck size={19}/><div><strong>Secure deposits</strong><p>Confirm the asset and network before sending. Deposits require blockchain confirmation and account verification.</p></div></div>
 
-          <AuthPanel />
-          <LiveMarketBoard />
 
           <section className="quick-actions">
             <a href="#deposit" className="action-card"><span className="action-icon"><Wallet size={21}/></span><span><b>Make a deposit</b><small>View supported assets and networks</small></span><ChevronRight size={20}/></a>
