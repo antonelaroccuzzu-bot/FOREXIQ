@@ -10,13 +10,15 @@ export default function AuthPanel() {
   const [email,setEmail]=useState(""); const [password,setPassword]=useState("");
   const [session,setSession]=useState<Session|null>(null); const [admin,setAdmin]=useState(false);
   const [busy,setBusy]=useState(false); const [message,setMessage]=useState("");
+  const [mode,setMode]=useState<"login"|"signup">("login");
+  const connected=Boolean(URL&&KEY);
   useEffect(()=>{ try { const raw=localStorage.getItem("okx-session"); if(raw){const s=JSON.parse(raw) as Session; setSession(s); void checkAdmin(s);} } catch {} },[]);
   async function checkAdmin(s:Session){
     if(!URL||!KEY)return;
     try { const r=await fetch(URL+"/rest/v1/okx_admins?user_id=eq."+encodeURIComponent(s.user.id)+"&select=user_id",{headers:{apikey:KEY,Authorization:"Bearer "+s.access_token}}); const d=await r.json(); setAdmin(Array.isArray(d)&&d.length>0); } catch {}
   }
-  async function submit(mode:"login"|"signup"){
-    if(!URL||!KEY){setMessage("Supabase is not connected yet. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel.");return;}
+  async function submit(){
+    if(!URL||!KEY){setMessage("Supabase connection is missing. Add the project URL and Publishable (anon) Key to the 0KX Vercel environment variables, then redeploy.");return;}
     if(!email.trim()||!password){setMessage("Enter your email and password.");return;}
     setBusy(true);setMessage("");
     try{
@@ -24,13 +26,20 @@ export default function AuthPanel() {
       const r=await fetch(URL+endpoint,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY},body:JSON.stringify({email:email.trim(),password})});
       const d=await r.json();
       if(!r.ok)throw new Error(d.msg||d.message||d.error_description||"Authentication failed");
-      if(!d.access_token){setMessage("Account created. Check your email to confirm it, then sign in.");return;}
+      if(!d.access_token){setMessage("Account created. Check your email to confirm it, then sign in.");setMode("login");return;}
       const s:Session={access_token:d.access_token,user:d.user};localStorage.setItem("okx-session",JSON.stringify(s));setSession(s);await checkAdmin(s);setPassword("");setMessage("Signed in successfully.");
     }catch(e){setMessage(e instanceof Error?e.message:"Unable to connect.");}finally{setBusy(false);}
   }
   async function signOut(){if(URL&&KEY&&session)try{await fetch(URL+"/auth/v1/logout",{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+session.access_token}})}catch{}localStorage.removeItem("okx-session");setSession(null);setAdmin(false);setMessage("You have signed out.");}
-  return <section className="section-block auth-section" id="account"><div className="section-heading"><div><h2>Account access</h2><p>Sign in to access your personal 0KX account.</p></div>{session&&<span className="section-tag">{admin?"ADMIN ACCOUNT":"SIGNED IN"}</span>}</div>
-  {session?<div className="auth-signed"><div className="auth-user"><span className="auth-avatar">{admin?<ShieldCheck size={19}/>:<LogIn size={19}/>}</span><div><b>{session.user.email}</b><small>{admin?"Administrator access detected":"Customer account"}</small></div></div><button className="auth-submit secondary" onClick={signOut}><LogOut size={17}/> Sign out</button></div>:
-  <div className="auth-form"><label>Email address<input type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Password<input type="password" autoComplete="current-password" placeholder="Enter your password" value={password} onChange={e=>setPassword(e.target.value)}/></label><div className="auth-actions"><button className="auth-submit" disabled={busy} onClick={()=>submit("login")}><LogIn size={17}/>{busy?"Please wait":"Sign in"}</button><button className="auth-submit secondary" disabled={busy} onClick={()=>submit("signup")}><UserPlus size={17}/> Create account</button></div></div>}
-  {message&&<p className="auth-message" role="status">{message}</p>}</section>;
+  return <section className="section-block auth-section" id="account">
+    <div className="section-heading"><div><h2>Account access</h2><p>Sign in to access your personal 0KX account.</p></div>{session&&<span className="section-tag">{admin?"ADMIN ACCOUNT":"SIGNED IN"}</span>}</div>
+    {!session&&<div className="auth-mode-switch" aria-label="Choose account action">
+      <button type="button" className={mode==="login"?"active":""} onClick={()=>{setMode("login");setMessage("");}}><LogIn size={17}/> Sign in</button>
+      <button type="button" className={mode==="signup"?"active":""} onClick={()=>{setMode("signup");setMessage("");}}><UserPlus size={17}/> Create account</button>
+    </div>}
+    {!connected&&!session&&<div className="auth-connection-warning"><b>Supabase is not connected</b><span>Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to the 0KX Vercel environment variables, then redeploy the site.</span></div>}
+    {session?<div className="auth-signed"><div className="auth-user"><span className="auth-avatar">{admin?<ShieldCheck size={19}/>:<LogIn size={19}/>}</span><div><b>{session.user.email}</b><small>{admin?"Administrator access detected":"Customer account"}</small></div></div><button className="auth-submit secondary" onClick={signOut}><LogOut size={17}/> Sign out</button></div>:
+    <div className="auth-form"><label>Email address<input type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Password<input type="password" autoComplete={mode==="login"?"current-password":"new-password"} placeholder={mode==="login"?"Enter your password":"Create a password"} value={password} onChange={e=>setPassword(e.target.value)}/></label><div className="auth-actions"><button className="auth-submit" disabled={busy||!connected} onClick={submit}>{mode==="login"?<LogIn size={17}/>:<UserPlus size={17}/>} {busy?"Please wait":mode==="login"?"Sign in":"Create account"}</button></div></div>}
+    {message&&<p className="auth-message" role="status">{message}</p>}
+  </section>;
 }
