@@ -14,7 +14,7 @@ const features=[
  {title:"Track your portfolio",text:"Review your account activity and follow market movements from one place.",image:"https://images.unsplash.com/photo-1640340434855-6084b1f4901d?auto=format&fit=crop&w=1000&q=85"},
  {title:"Stay informed",text:"Explore digital-asset market information and educational resources before making decisions.",image:"https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1000&q=85"}
 ];
-export default function LandingSections(){
+export default function LandingSections({ onAuthChange }: { onAuthChange?: (session: { access_token: string; user: { id: string; email?: string } } | null, admin: boolean) => void }){
  return <div className="landing-experience">
   <section className="landing-hero" id="home">
    <div className="hero-shade"/>
@@ -23,7 +23,7 @@ export default function LandingSections(){
      <div className="hero-actions"><a href="#investment-plans" className="hero-primary">Explore the platform <ArrowRight size={17}/></a><a href="#about-0kx" className="hero-secondary">Discover 0KX</a></div>
      <div className="hero-trust"><span><ShieldCheck size={16}/> Account-focused tools</span><span><Globe2 size={16}/> Online access</span></div>
     </div>
-    <div className="hero-account"><div className="hero-account-top"><span>WELCOME TO 0KX</span><span className="hero-live-dot">● SECURE ACCESS</span></div><AuthPanel/></div>
+    <div className="hero-account"><div className="hero-account-top"><span>WELCOME TO 0KX</span><span className="hero-live-dot">● SECURE ACCESS</span></div><AuthPanel onAuthChange={onAuthChange}/></div>
    </div>
    <div className="hero-bottomline"><span>01 / DIGITAL ASSETS</span><span>EXPLORE • MANAGE • LEARN</span></div>
   </section>
